@@ -23,9 +23,14 @@ class RAGPipeline:
             length_function=len,
         )
 
-    def process_document(self, project_id: str, text: str, source: str):
+    def process_document(self, project_id: str, text: str, source: str, chunk_size: int = 1000, chunk_overlap: int = 200):
         """Chunks text and adds it to the project's vector store in batches to respect API limits."""
-        chunks = self.text_splitter.split_text(text)
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            length_function=len,
+        )
+        chunks = text_splitter.split_text(text)
         metadatas = [{"source": source} for _ in chunks]
         
         import time
@@ -41,7 +46,7 @@ class RAGPipeline:
                 
         return len(chunks)
 
-    async def answer_question(self, project_id: str, question: str) -> dict:
+    async def answer_question(self, project_id: str, question: str, top_k: int = 20) -> dict:
         """Retrieves context and generates an answer."""
         if not self.llm:
             return {"answer": "Error: GEMINI_API_KEY is not set in backend/.env", "sources": []}
@@ -51,10 +56,10 @@ class RAGPipeline:
             return {"answer": "I don't have any documents to read from yet! Please ingest some documents first.", "sources": []}
 
         import asyncio
-        # Retrieve top 4 most relevant chunks (running in a thread to avoid blocking FastAPI)
+        # Retrieve top K most relevant chunks (running in a thread to avoid blocking FastAPI)
         try:
             docs = await asyncio.wait_for(
-                asyncio.to_thread(store.similarity_search, question, k=20),
+                asyncio.to_thread(store.similarity_search, question, k=top_k),
                 timeout=10.0
             )
         except asyncio.TimeoutError:
@@ -65,7 +70,7 @@ class RAGPipeline:
         context = "\n\n".join([f"Source: {doc.metadata.get('source', 'Unknown')}\nContent: {doc.page_content}" for doc in docs])
         
         prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are an intelligent technical documentation assistant. You MUST answer the user's question accurately using ONLY the following retrieved context. If you use the context, you must append the source URL at the very end of your response. You MUST format the source exactly like this (with the exact HTML tags) preceded by a blank line:\n\n<span style='color: gray'>Source:</span> [URL]\n\nIf the answer is NOT contained in the context, you MUST NOT answer the question. Instead, you must say exactly: 'The answer to this question was not found in the ingested documentation.'\n\nContext:\n{context}"),
+            ("system", "You are an intelligent technical documentation assistant. You MUST answer the user's question accurately using ONLY the following retrieved context. If you use the context, you must append the source URLs at the very end of your response. If there are multiple sources, you MUST list each one as a separate bullet point. You MUST format EACH source exactly like this:\n\n* <span style='color: gray'>Source:</span> [URL]\n\nIf the answer is NOT contained in the context, you MUST NOT answer the question. Instead, you must say exactly: 'The answer to this question was not found in the ingested documentation.'\n\nContext:\n{context}"),
             ("user", "{question}")
         ])
 

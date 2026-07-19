@@ -36,4 +36,15 @@ class VectorStoreManager:
         else:
             logger.error("Failed to add texts: Pinecone store could not be initialized.")
 
+    def delete_namespace(self, project_id: str):
+        store = self.get_store(project_id)
+        if store:
+            try:
+                store.delete(delete_all=True, namespace=project_id)
+                logger.info(f"Deleted Pinecone namespace: {project_id}")
+            except Exception as e:
+                logger.error(f"Error deleting namespace {project_id}: {e}")
+        else:
+            logger.error("Failed to delete namespace: Pinecone store could not be initialized.")
+
 vector_store_manager = VectorStoreManager()

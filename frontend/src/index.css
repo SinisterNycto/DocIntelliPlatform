@@ -1,23 +1,24 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #0f172a;
-  --color-secondary: #334155;
-  --color-accent: #3b82f6;
-  --color-background: #f8fafc;
-  --color-foreground: #020617;
+  --color-void: #0C0D11;
+  --color-surface: #16181F;
+  --color-grid: #2A2D3A;
+  --color-primary: #4A72B2;
+  --color-accent: #E5A93D;
+  --color-text-data: #D8DEE9;
   
-  --font-sans: "Inter", system-ui, sans-serif;
+  --font-sans: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
 @layer base {
   body {
-    @apply bg-background text-foreground antialiased;
-  }
-}
-
-@layer utilities {
-  .glass-panel {
-    @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-xl;
+    @apply text-text-data antialiased;
+    background-color: var(--color-void);
+    background-image: url('/bg.png');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
   }
 }

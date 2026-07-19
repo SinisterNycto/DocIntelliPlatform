@@ -1,0 +1,37 @@
+[
+    {
+        "id": 0,
+        "question": "What message command do worker processes send to the primary process to notify of a request?",
+        "ground_truth_chunk": "listen ( 8000 ) ; } const cluster = require ( 'node:cluster' ) ; const http = require ( 'node:http' ) ; const numCPUs = require ( 'node:os' ) . availableParallelism () ; if (cluster . isPrimary) { // Keep track of http requests let numReqs = 0 ; setInterval ( () => { console . log ( `numReqs = ${ numReqs } ` ) ; }, 1000 ) ; // Count requests function messageHandler ( msg ) { if (msg . cmd && msg . cmd === 'notifyRequest' ) { numReqs += 1 ; } } // Start workers and listen for messages containing notifyRequest for ( let i = 0 ; i < numCPUs ; i ++ ) { cluster . fork () ; } for ( const id in cluster . workers) { cluster . workers[id] . on ( 'message' , messageHandler) ; } } else { // Worker processes have a http server. http . Server ( ( req , res ) => { res . writeHead ( 200 ) ; res . end ( 'hello world \\n ' ) ; // Notify primary about the request process . send ( { cmd : 'notifyRequest' } ) ; } ) . listen ( 8000 ) ; } javascript copy Event: 'online' # Added in: v0.7.0 Similar to the"
+    },
+    {
+        "id": 1,
+        "question": "What module should be used to distribute workloads among application threads within a single Node.js instance when process isolation is not needed?",
+        "ground_truth_chunk": "that can distribute workloads among their application threads. When process\nisolation is not needed, use the worker_threads module instead, which\nallows running multiple application threads within a single Node.js instance. The cluster module allows easy creation of child processes that all share"
+    },
+    {
+        "id": 2,
+        "question": "Which event, when emitted, includes parameters for both an exit code and a signal?",
+        "ground_truth_chunk": "it can be obtained using cluster.worker . Event: 'disconnect' # Added in: v0.7.7 Similar to the cluster.on('disconnect') event, but specific to this worker. cluster . fork () . on ( 'disconnect' , () => { // Worker has disconnected } ) ; js copy Event: 'error' # Added in: v0.7.3 This event is the same as the one provided by child_process.fork() . Within a worker, process.on('error') may also be used. Event: 'exit' # Added in: v0.11.2 code <number> The exit code, if it exited normally. signal <string> The name of the signal (e.g. 'SIGHUP' ) that caused"
+    },
+    {
+        "id": 3,
+        "question": "What version of Node.js introduced the `worker.kill` method?",
+        "ground_truth_chunk": "'node:http' ) ; const numCPUs = require ( 'node:os' ) . availableParallelism () ; if (cluster . isPrimary) { console . log ( `Primary ${ process . pid } is running` ) ; // Fork workers. for ( let i = 0 ; i < numCPUs ; i ++ ) { cluster . fork () ; } cluster . on ( 'fork' , ( worker ) => { console . log ( 'worker is dead:' , worker . isDead ()) ; } ) ; cluster . on ( 'exit' , ( worker , code , signal ) => { console . log ( 'worker is dead:' , worker . isDead ()) ; } ) ; } else { // Workers can share any TCP connection. In this case, it is an HTTP server. http . createServer ( ( req , res ) => { res . writeHead ( 200 ) ; res . end ( `Current process \\n ${ process . pid } ` ) ; process . kill (process . pid) ; } ) . listen ( 8000 ) ; } javascript copy worker.kill([signal]) # Added in: v0.9.12 signal <string> Name of the kill signal to send to the worker"
+    },
+    {
+        "id": 4,
+        "question": "What condition must be met for Windows to change to SCHED_RR?",
+        "ground_truth_chunk": "or .setupPrimary() is called, whichever comes first. SCHED_RR is the default on all operating systems except Windows.\nWindows will change to SCHED_RR once libuv is able to effectively\ndistribute IOCP handles without incurring a large performance hit. cluster.schedulingPolicy can also be set through the NODE_CLUSTER_SCHED_POLICY environment variable. Valid\nvalues are 'rr' and 'none' . cluster.settings # Added in: v0.7.1 History Version Changes v13.2.0, v12.16.0 The serialization option is supported now. v9.5.0 The cwd option is supported now. v9.4.0 The windowsHide option is supported now. v8.2.0 The inspectPort option is supported now. v6.4.0 The stdio option is supported now. Type: <Object> execArgv <string> [] List of string arguments passed to the Node.js"
+    },
+    {
+        "id": 5,
+        "question": "What is the only worker attribute that cannot be set via `cluster.setupPrimary()`?",
+        "ground_truth_chunk": "contain the settings, including the default values. This object is not intended to be changed or set manually. cluster.setupMaster([settings]) # Added in: v0.7.1 Deprecated in: v16.0.0 History Version Changes v6.4.0 The stdio option is supported now. Stability: 0 - Deprecated Deprecated alias for .setupPrimary() . cluster.setupPrimary([settings]) # Added in: v16.0.0 settings <Object> See cluster.settings . setupPrimary is used to change the default 'fork' behavior. Once called,\nthe settings will be present in cluster.settings . Any settings changes only affect future calls to .fork() and have no\neffect on workers that are already running. The only attribute of a worker that cannot be set via .setupPrimary() is\nthe env passed to .fork() . The defaults above apply to the first call only; the defaults for later"
+    },
+    {
+        "id": 7,
+        "question": "What specific command message do worker processes send to the primary process to increment the request counter?",
+        "ground_truth_chunk": "process of the number of HTTP requests received by the workers: import cluster from 'node:cluster' ; import http from 'node:http' ; import { availableParallelism } from 'node:os' ; import process from 'node:process' ; if (cluster . isPrimary) { // Keep track of http requests let numReqs = 0 ; setInterval ( () => { console . log ( `numReqs = ${ numReqs } ` ) ; }, 1000 ) ; // Count requests function messageHandler ( msg ) { if (msg . cmd && msg . cmd === 'notifyRequest' ) { numReqs += 1 ; } } // Start workers and listen for messages containing notifyRequest const numCPUs = availableParallelism () ; for ( let i = 0 ; i < numCPUs ; i ++ ) { cluster . fork () ; } for ( const id in cluster . workers) { cluster . workers[id] . on ( 'message' , messageHandler) ; } } else { // Worker processes have a http server. http . Server ( ( req , res ) => { res . writeHead ( 200 ) ; res . end ( 'hello world \\n ' ) ; // Notify primary about the request process . send ( { cmd : 'notifyRequest' } ) ; } ) ."
+    }
+]

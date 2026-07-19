@@ -1,10 +1,16 @@
 import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Send, Bot, User, Loader2 } from 'lucide-react';
+import { Terminal, Code2, Loader2, Send } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 
-export default function Chat({ projectId }: { projectId: string }) {
+interface ChatProps {
+  projectId: string;
+  onTraceUpdate?: (status: string) => void;
+  onContextUpdate?: (context: any[]) => void;
+}
+
+export default function Chat({ projectId, onTraceUpdate, onContextUpdate }: ChatProps) {
   const queryClient = useQueryClient();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -20,13 +26,30 @@ export default function Chat({ projectId }: { projectId: string }) {
 
   const sendMessage = useMutation({
     mutationFn: async (content: string) => {
+      // 1. Simulate Vectorizing
+      onTraceUpdate?.('Vectorizing query (3072d)...');
+      await new Promise(r => setTimeout(r, 600));
+      
+      // 2. Simulate Pinecone query
+      onTraceUpdate?.('Querying Pinecone index...');
+      await new Promise(r => setTimeout(r, 800));
+
       const res = await fetch(`http://localhost:8000/api/chat/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ project_id: projectId, content })
       });
       if (!res.ok) throw new Error('Failed to send message');
-      return res.json();
+      
+      const data = await res.json();
+      
+      // 3. Update Trace and Context with actual sources
+      onTraceUpdate?.('Retrieved chunks. LLM generating response...');
+      onContextUpdate?.(data.sources || []);
+      await new Promise(r => setTimeout(r, 800));
+      
+      onTraceUpdate?.('IDLE');
+      return data;
     },
     onMutate: async (newContent) => {
       await queryClient.cancelQueries({ queryKey: ['chat', projectId] });
@@ -42,6 +65,7 @@ export default function Chat({ projectId }: { projectId: string }) {
       return { previousMessages };
     },
     onError: (err, newContent, context) => {
+      onTraceUpdate?.('ERROR: Retrieval Failed');
       queryClient.setQueryData(['chat', projectId], context?.previousMessages);
     },
     onSettled: () => {
@@ -58,32 +82,33 @@ export default function Chat({ projectId }: { projectId: string }) {
   }, [messages, sendMessage.isPending]);
 
   return (
-    <div className="flex flex-col h-full bg-white relative">
-      <div className="p-4 border-b border-slate-100 flex items-center bg-white/80 backdrop-blur-md sticky top-0 z-10">
-        <h2 className="text-lg font-semibold text-slate-900">AI Assistant</h2>
-      </div>
-
+    <div className="flex flex-col h-full bg-transparent relative">
       <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6">
         {messages.length === 0 && (
-          <div className="h-full flex flex-col items-center justify-center text-center text-slate-500 max-w-md mx-auto">
-            <Bot className="w-12 h-12 text-slate-300 mb-4" />
-            <h3 className="text-lg font-medium text-slate-900 mb-2">How can I help you today?</h3>
-            <p className="text-sm">Ingest some documents on the left, and ask me any questions about them.</p>
+          <div className="h-full flex flex-col items-center justify-center text-center text-text-data/40 max-w-md mx-auto border border-grid border-dashed rounded-sm p-8 bg-surface/30">
+            <Terminal className="w-12 h-12 mb-4 opacity-50" />
+            <h3 className="text-sm font-mono tracking-widest uppercase mb-2 text-text-data/80">System Ready</h3>
+            <p className="text-xs font-mono">Awaiting query input to initiate vector space retrieval.</p>
           </div>
         )}
 
         {messages.map((msg: any, idx: number) => (
-          <div key={msg.id || idx} className={`flex gap-4 max-w-3xl mx-auto ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${msg.role === 'user' ? 'bg-accent text-white' : 'bg-slate-100 text-slate-600'}`}>
-              {msg.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
-            </div>
-            
-            <div className={`flex flex-col gap-2 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-              <div className={`px-5 py-3 rounded-2xl max-w-2xl ${msg.role === 'user' ? 'bg-accent text-white rounded-tr-none' : 'bg-slate-50 text-slate-900 rounded-tl-none border border-slate-100'}`}>
+          <div key={msg.id || idx} className={`flex max-w-4xl mx-auto w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`flex flex-col max-w-[85%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+              
+              <div className="flex items-center gap-2 mb-1 text-[10px] font-mono uppercase tracking-widest text-text-data/50">
                 {msg.role === 'user' ? (
-                  <p className="whitespace-pre-wrap text-sm">{msg.content}</p>
+                  <><span>USER_QUERY</span><Terminal className="w-3 h-3" /></>
                 ) : (
-                  <div className="prose prose-sm prose-slate max-w-none">
+                  <><Code2 className="w-3 h-3 text-accent" /><span className="text-accent">RAG_OUTPUT</span></>
+                )}
+              </div>
+
+              <div className={`p-4 rounded-sm border ${msg.role === 'user' ? 'bg-primary/10 border-primary/30 text-text-data' : 'bg-surface border-grid text-text-data'}`}>
+                {msg.role === 'user' ? (
+                  <p className="whitespace-pre-wrap text-sm font-mono">{msg.content}</p>
+                ) : (
+                  <div className="prose prose-sm prose-invert prose-p:font-sans prose-headings:font-sans prose-code:font-mono prose-a:text-primary max-w-none">
                     <ReactMarkdown rehypePlugins={[rehypeRaw]}>{msg.content}</ReactMarkdown>
                   </div>
                 )}
@@ -94,21 +119,24 @@ export default function Chat({ projectId }: { projectId: string }) {
         ))}
 
         {sendMessage.isPending && (
-          <div className="flex gap-4 max-w-3xl mx-auto">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-slate-100 text-slate-600">
-              <Bot className="w-4 h-4" />
-            </div>
-            <div className="px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 rounded-tl-none flex items-center gap-2 text-slate-500 text-sm">
-              <Loader2 className="w-4 h-4 animate-spin" /> Thinking...
+          <div className="flex max-w-4xl mx-auto w-full justify-start">
+            <div className="flex flex-col items-start max-w-[85%]">
+              <div className="flex items-center gap-2 mb-1 text-[10px] font-mono uppercase tracking-widest text-accent">
+                <Code2 className="w-3 h-3" /> PIPELINE_ACTIVE
+              </div>
+              <div className="p-4 rounded-sm border bg-surface border-accent/50 text-accent flex items-center gap-3">
+                <Loader2 className="w-4 h-4 animate-spin" /> 
+                <span className="text-xs font-mono uppercase">Streaming Response...</span>
+              </div>
             </div>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="p-4 bg-white border-t border-slate-100">
+      <div className="p-4 bg-surface/50 border-t border-grid">
         <form 
-          className="max-w-3xl mx-auto relative flex items-center"
+          className="max-w-4xl mx-auto relative flex items-center"
           onSubmit={(e) => {
             e.preventDefault();
             if (input.trim() && !sendMessage.isPending) {
@@ -116,10 +144,11 @@ export default function Chat({ projectId }: { projectId: string }) {
             }
           }}
         >
+          <div className="absolute left-4 text-primary font-mono text-sm">{'>'}</div>
           <input 
             type="text" 
-            placeholder="Ask a question about your documents..."
-            className="w-full bg-slate-50 border border-slate-200 rounded-full pl-6 pr-14 py-4 text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all shadow-sm"
+            placeholder="Enter search query..."
+            className="w-full bg-void border border-grid rounded-sm pl-10 pr-14 py-3 text-sm font-mono text-text-data focus:outline-none focus:border-primary transition-colors placeholder:text-text-data/30"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={sendMessage.isPending}
@@ -127,14 +156,11 @@ export default function Chat({ projectId }: { projectId: string }) {
           <button 
             type="submit"
             disabled={!input.trim() || sendMessage.isPending}
-            className="absolute right-2 p-2.5 bg-accent text-white rounded-full hover:bg-accent/90 disabled:opacity-50 disabled:hover:bg-accent transition-all shadow-md"
+            className="absolute right-2 p-1.5 bg-primary/20 text-primary hover:bg-primary hover:text-void rounded-sm disabled:opacity-50 disabled:hover:bg-primary/20 transition-colors"
           >
             <Send className="w-4 h-4" />
           </button>
         </form>
-        <p className="text-center text-xs text-slate-400 mt-3">
-          AI can make mistakes. Consider verifying important information.
-        </p>
       </div>
     </div>
   );
