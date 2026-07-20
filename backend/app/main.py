@@ -21,11 +21,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from app.api import projects, documents, chat
+from app.api import projects, documents, chat, webhooks
 
 app.include_router(projects.router, prefix="/api/projects", tags=["projects"])
 app.include_router(documents.router, prefix="/api/documents", tags=["documents"])
 app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
+app.include_router(webhooks.router, prefix="/api/webhooks", tags=["webhooks"])
 
 @app.get("/")
 def read_root():

@@ -1,24 +1,50 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 @theme {
-  --color-void: #0C0D11;
-  --color-surface: #16181F;
-  --color-grid: #2A2D3A;
-  --color-primary: #4A72B2;
-  --color-accent: #E5A93D;
-  --color-text-data: #D8DEE9;
+  --color-void: var(--theme-void);
+  --color-surface: var(--theme-surface);
+  --color-grid: var(--theme-grid);
+  --color-primary: var(--theme-primary);
+  --color-accent: var(--theme-accent);
+  --color-text-data: var(--theme-text-data);
+  --color-text-muted: var(--theme-text-muted);
   
   --font-sans: "IBM Plex Sans", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-serif: "Playfair Display", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
 }
 
 @layer base {
+  :root {
+    --theme-void: #F9FAFB;
+    --theme-surface: #FFFFFF;
+    --theme-grid: #E5E7EB;
+    --theme-primary: #4A7065;
+    --theme-accent: #8A8071;
+    --theme-text-data: #111827;
+    --theme-text-muted: #4B5563;
+  }
+
+  .dark {
+    --theme-void: #111316;
+    --theme-surface: #1A1C23;
+    --theme-grid: #2D3139;
+    --theme-primary: #6B8E85;
+    --theme-accent: #A89F91;
+    --theme-text-data: #E4E7EB;
+    --theme-text-muted: #8B949E;
+  }
+
   body {
     @apply text-text-data antialiased;
-    background-color: var(--color-void);
-    background-image: url('/bg.png');
-    background-size: cover;
+    background-color: var(--theme-void);
+    background-image: 
+      linear-gradient(to right, var(--theme-grid) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--theme-grid) 1px, transparent 1px);
+    background-size: 40px 40px;
     background-position: center;
     background-attachment: fixed;
+    transition: background-color 0.3s ease, color 0.3s ease, background-image 0.3s ease;
   }
 }

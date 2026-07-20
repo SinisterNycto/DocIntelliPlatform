@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Terminal, Database, Upload, Link as LinkIcon, FileText, ArrowRight, Trash2, Code2 } from 'lucide-react';
+import { useAuth } from '@clerk/clerk-react';
 import Chat from '../components/Chat';
 
 export default function ProjectView() {
@@ -10,11 +11,15 @@ export default function ProjectView() {
   const [urlInput, setUrlInput] = useState('');
   const [activeContext, setActiveContext] = useState<any[]>([]);
   const [traceStatus, setTraceStatus] = useState<string>('IDLE');
+  const { getToken } = useAuth();
   
   const { data: project } = useQuery({
     queryKey: ['project', id],
     queryFn: async () => {
-      const res = await fetch(`http://localhost:8000/api/projects/${id}`);
+      const token = await getToken();
+      const res = await fetch(`http://localhost:8000/api/projects/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       if (!res.ok) throw new Error('Failed to fetch project');
       return res.json();
     }
@@ -23,7 +28,10 @@ export default function ProjectView() {
   const { data: documents = [] } = useQuery({
     queryKey: ['documents', id],
     queryFn: async () => {
-      const res = await fetch(`http://localhost:8000/api/documents/project/${id}`);
+      const token = await getToken();
+      const res = await fetch(`http://localhost:8000/api/documents/project/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       if (!res.ok) throw new Error('Failed to fetch documents');
       return res.json();
     },
@@ -32,9 +40,13 @@ export default function ProjectView() {
 
   const uploadUrl = useMutation({
     mutationFn: async (url: string) => {
+      const token = await getToken();
       const res = await fetch(`http://localhost:8000/api/documents/url`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ project_id: id, url })
       });
       if (!res.ok) throw new Error('Failed to submit URL');
@@ -48,10 +60,12 @@ export default function ProjectView() {
 
   const uploadPdf = useMutation({
     mutationFn: async (file: File) => {
+      const token = await getToken();
       const formData = new FormData();
       formData.append('file', file);
       const res = await fetch(`http://localhost:8000/api/documents/upload?project_id=${id}`, {
         method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
         body: formData
       });
       if (!res.ok) throw new Error('Failed to upload PDF');
@@ -64,8 +78,10 @@ export default function ProjectView() {
 
   const deleteDocument = useMutation({
     mutationFn: async (documentId: string) => {
+      const token = await getToken();
       const res = await fetch(`http://localhost:8000/api/documents/${documentId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
       });
       if (!res.ok) throw new Error('Failed to delete document');
       return res.json();
@@ -83,7 +99,7 @@ export default function ProjectView() {
       {/* LEFT COLUMN: Data Ingestion Pipeline */}
       <div className="w-[300px] h-full border-r border-grid bg-surface/30 flex flex-col shrink-0 min-h-0 overflow-hidden">
         <div className="p-4 border-b border-grid bg-surface flex flex-col gap-3 shrink-0">
-          <Link to="/" className="w-full flex justify-center items-center gap-2 bg-void border border-primary text-primary hover:bg-primary hover:text-void transition-colors py-2 rounded-sm text-xs font-mono uppercase tracking-widest font-bold">
+          <Link to="/dashboard" className="w-full flex justify-center items-center gap-2 bg-void border border-primary text-primary hover:bg-primary hover:text-void transition-colors py-2 rounded-sm text-xs font-mono uppercase tracking-widest font-bold">
             <ArrowRight className="w-4 h-4 rotate-180" />
             BACK TO DASHBOARD
           </Link>

@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     PINECONE_API_KEY: str = os.getenv("PINECONE_API_KEY", "")
     PINECONE_INDEX_NAME: str = os.getenv("PINECONE_INDEX_NAME", "docintelli")
+    CLERK_ISSUER_URL: str = os.getenv("CLERK_ISSUER_URL", "")
+    CLERK_WEBHOOK_SECRET: str = os.getenv("CLERK_WEBHOOK_SECRET", "")
 
     class Config:
         env_file = ".env"

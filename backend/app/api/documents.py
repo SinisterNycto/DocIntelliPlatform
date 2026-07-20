@@ -1,18 +1,26 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File, BackgroundTasks
+from fastapi import APIRouter, HTTPException, UploadFile, File, BackgroundTasks, Depends
 from typing import List
 from app.core.database import db
 from app.core.models import DocumentModel
 from app.tasks.ingestion import process_website_task, process_pdf_task
 from bson import ObjectId
+from app.api.auth import get_current_user
 import os
 import shutil
 
 router = APIRouter()
 
-@router.get("/project/{project_id}", response_model=List[DocumentModel])
-async def list_documents(project_id: str):
+async def verify_project_ownership(project_id: str, user_id: str):
     if not ObjectId.is_valid(project_id):
         raise HTTPException(status_code=400, detail="Invalid project ID")
+    project = await db.projects.find_one({"_id": ObjectId(project_id), "user_id": user_id})
+    if not project:
+        raise HTTPException(status_code=403, detail="Not authorized to access this project")
+    return project
+
+@router.get("/project/{project_id}", response_model=List[DocumentModel])
+async def list_documents(project_id: str, user_id: str = Depends(get_current_user)):
+    await verify_project_ownership(project_id, user_id)
         
     documents = []
     cursor = db.documents.find({"project_id": project_id}).sort("created_at", -1)
@@ -21,15 +29,14 @@ async def list_documents(project_id: str):
     return documents
 
 @router.post("/url")
-async def ingest_url(payload: dict):
+async def ingest_url(payload: dict, user_id: str = Depends(get_current_user)):
     project_id = payload.get("project_id")
     url = payload.get("url")
     
     if not project_id or not url:
         raise HTTPException(status_code=400, detail="project_id and url are required")
         
-    if not ObjectId.is_valid(project_id):
-        raise HTTPException(status_code=400, detail="Invalid project ID")
+    await verify_project_ownership(project_id, user_id)
 
     # Create document record
     new_doc = DocumentModel(project_id=project_id, filename=url, url=url, status="pending")
@@ -42,9 +49,8 @@ async def ingest_url(payload: dict):
     return {"message": "URL ingestion started", "document_id": doc_id}
 
 @router.post("/upload")
-async def upload_pdf(project_id: str, file: UploadFile = File(...)):
-    if not ObjectId.is_valid(project_id):
-        raise HTTPException(status_code=400, detail="Invalid project ID")
+async def upload_pdf(project_id: str, file: UploadFile = File(...), user_id: str = Depends(get_current_user)):
+    await verify_project_ownership(project_id, user_id)
         
     if not file.filename.endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
@@ -68,12 +74,18 @@ async def upload_pdf(project_id: str, file: UploadFile = File(...)):
     return {"message": "PDF ingestion started", "document_id": doc_id}
 
 @router.delete("/{document_id}")
-async def delete_document(document_id: str):
+async def delete_document(document_id: str, user_id: str = Depends(get_current_user)):
     if not ObjectId.is_valid(document_id):
         raise HTTPException(status_code=400, detail="Invalid document ID")
         
-    result = await db.documents.delete_one({"_id": ObjectId(document_id)})
-    if result.deleted_count == 0:
+    # Find the document to get the project_id
+    doc = await db.documents.find_one({"_id": ObjectId(document_id)})
+    if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
         
+    # Verify the user owns the project this document belongs to
+    await verify_project_ownership(doc["project_id"], user_id)
+        
+    result = await db.documents.delete_one({"_id": ObjectId(document_id)})
+    
     return {"message": "Document deleted successfully"}

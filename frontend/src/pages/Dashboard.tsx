@@ -2,17 +2,23 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Database, FolderGit2, PlusSquare, ArrowRight, Activity, Terminal, Trash2 } from 'lucide-react';
+import { UserButton, useAuth } from '@clerk/clerk-react';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isCreating, setIsCreating] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
+  const { getToken } = useAuth();
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ['projects'],
     queryFn: async () => {
-      const res = await fetch('http://localhost:8000/api/projects');
+      const token = await getToken();
+      const res = await fetch('http://localhost:8000/api/projects', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       if (!res.ok) throw new Error('Failed to fetch projects');
       return res.json();
     }
@@ -20,9 +26,13 @@ export default function Dashboard() {
 
   const createProject = useMutation({
     mutationFn: async (name: string) => {
+      const token = await getToken();
       const res = await fetch('http://localhost:8000/api/projects/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ name, description: '' })
       });
       if (!res.ok) throw new Error('Failed to create project');
@@ -45,8 +55,10 @@ export default function Dashboard() {
 
   const deleteProject = useMutation({
     mutationFn: async (projectId: string) => {
+      const token = await getToken();
       const res = await fetch(`http://localhost:8000/api/projects/${projectId}`, {
         method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
       });
       if (!res.ok) throw new Error('Failed to delete project');
       return res.json();
@@ -69,17 +81,15 @@ export default function Dashboard() {
       {/* Infrastructure Header */}
       <header className="border-b border-grid bg-surface/50">
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <Terminal className="h-5 w-5 text-accent" />
             <span className="font-mono font-semibold tracking-wide text-sm">DocIntelliPlatform<span className="text-grid ml-2">|</span><span className="text-primary ml-2 uppercase text-xs tracking-widest">RAG Engine</span></span>
-          </div>
+          </Link>
           <div className="flex items-center gap-6 font-mono text-xs uppercase tracking-widest text-text-data/70">
-            <Link to="/" className="text-primary">Projects</Link>
-            <button onClick={() => alert("Settings coming soon")} className="hover:text-primary transition-colors">Settings</button>
-            <button onClick={() => alert("User Auth coming soon")} className="flex items-center gap-2 hover:text-primary transition-colors">
-              <span className="h-2 w-2 rounded-full bg-accent animate-pulse"></span>
-              Status: Active
-            </button>
+            <ThemeToggle />
+            <Link to="/" className="hover:text-primary transition-colors">Home</Link>
+            <Link to="/dashboard" className="text-primary hover:text-accent transition-colors">Projects</Link>
+            <UserButton afterSignOutUrl="/" />
           </div>
         </div>
       </header>

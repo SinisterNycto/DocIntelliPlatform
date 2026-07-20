@@ -34,6 +34,7 @@ class PyObjectId(ObjectId):
 
 class ProjectModel(BaseModel):
     id: Optional[PyObjectId] = Field(alias="_id", default=None)
+    user_id: str
     name: str
     description: Optional[str] = ""
     created_at: datetime = Field(default_factory=datetime.utcnow)

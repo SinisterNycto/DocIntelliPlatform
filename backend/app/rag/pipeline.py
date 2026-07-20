@@ -39,7 +39,7 @@ class RAGPipeline:
                 
         return len(chunks)
 
-    async def answer_question(self, project_id: str, question: str, top_k: int = 20) -> dict:
+    async def answer_question(self, project_id: str, question: str, chat_history: list = None, top_k: int = 20) -> dict:
         """Retrieves context and generates an answer."""
         if not self.llm:
             return {"answer": "Error: GEMINI_API_KEY is not set in backend/.env", "sources": []}
@@ -62,10 +62,22 @@ class RAGPipeline:
         
         context = "\n\n".join([f"Source: {doc.metadata.get('source', 'Unknown')}\nContent: {doc.page_content}" for doc in docs])
         
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are an intelligent technical documentation assistant. You MUST answer the user's question accurately using ONLY the following retrieved context. If the answer is NOT contained in the context, you MUST NOT answer the question. Instead, you must say exactly: 'The answer to this question was not found in the ingested documentation.'\n\nIf you DO answer the question, you must append a special section at the very end of your response listing exactly which source URLs you used to formulate your answer. Format it exactly like this:\n\nUSED_SOURCES:\n- URL1\n- URL2\n\nContext:\n{context}"),
-            ("user", "{question}")
-        ])
+        system_prompt = "You are an intelligent technical documentation assistant. You MUST answer the user's question accurately using ONLY the following retrieved context. If the answer is NOT contained in the context, you MUST NOT answer the question. Instead, you must say exactly: 'The answer to this question was not found in the ingested documentation.'\n\nIf you DO answer the question, you must append a special section at the very end of your response listing exactly which source URLs you used to formulate your answer. Format it exactly like this:\n\nUSED_SOURCES:\n- URL1\n- URL2\n\nContext:\n{context}"
+        
+        messages = [("system", system_prompt)]
+        
+        if chat_history:
+            for msg in chat_history:
+                if msg.get("role") == "user":
+                    content = msg.get("content", "").replace("{", "{{").replace("}", "}}")
+                    messages.append(("user", content))
+                elif msg.get("role") == "assistant":
+                    content = msg.get("content", "").replace("{", "{{").replace("}", "}}")
+                    messages.append(("assistant", content))
+                    
+        messages.append(("user", "{question}"))
+
+        prompt = ChatPromptTemplate.from_messages(messages)
 
         chain = prompt | self.llm
         

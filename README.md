@@ -2,7 +2,9 @@
 > An autonomous RAG (Retrieval-Augmented Generation) platform designed to process, vectorize, and query technical documentation using local Hugging Face embeddings, Pinecone, and Gemini 2.5 Flash. When a document is ingested, the engine chunks, embeds, and indexes the content locally, providing a highly technical chat interface for instant semantic retrieval with exact source citations.
 
 ## 1. Features
-* Isolated, multi-project workspaces (namespaces) for managing independent knowledge bases.
+* **Isolated, multi-tenant workspaces:** Complete namespace separation ensuring data privacy across multiple user accounts via Clerk JWT authentication.
+* **Conversational Memory:** AI RAG pipeline automatically retrieves historical chat context for seamless follow-up questions.
+* **Rich Markdown UI:** Custom frontend rendering for GitHub Flavored Markdown, properly displaying bash commands, code blocks, and structured tables.
 * Complete workspace deletion with cascading cleanup across MongoDB and Pinecone vector stores.
 * Dynamic data ingestion pipelines supporting complex Single Page Applications (SPAs) via Jina Reader API and raw PDF uploads.
 * Fully automated, asynchronous vectorization pipeline using Celery workers that chunks large documents and pushes embeddings directly to Pinecone.
@@ -18,12 +20,13 @@ Instead of relying on cloud providers for embeddings, the backend runs a local H
 
 | Layer | Technology |
 | --- | --- |
-| **Frontend** | React, Vite, TypeScript, Tailwind CSS, React Query |
+| **Frontend** | React, Vite, TypeScript, Tailwind CSS, React Query, Clerk Auth |
 | **Backend** | Python, FastAPI, Uvicorn, Celery |
 | **AI (Embeddings)** | Hugging Face (`all-MiniLM-L6-v2`), `sentence-transformers` |
 | **AI (Generative)** | Google Gemini API (`gemini-2.5-flash`), LangChain |
 | **Database** | MongoDB, Redis (Celery Broker) |
 | **Vector Store** | Pinecone |
+| **Authentication** | Clerk (JWT parsing in FastAPI) |
 | **Deployment** | Docker, Docker Compose |
 
 ## 4. Setup & Running locally
@@ -59,7 +62,7 @@ Instead of relying on cloud providers for embeddings, the backend runs a local H
 1. **Namespace initialized:** A developer creates a new workspace on the dashboard. The backend provisions an isolated namespace in MongoDB.
 2. **Data ingested:** The user submits a URL or PDF. A background Celery worker scrapes the text (using Jina Reader for complex websites) or extracts PDF text, running it through a `RecursiveCharacterTextSplitter`.
 3. **Automated Local Vectorization:** LangChain sends the document chunks through the local Hugging Face pipeline, maps the 384-dimensional semantic vectors, and upserts them directly to the designated Pinecone namespace.
-4. **Context-aware Querying:** When a user asks a question, the backend embeds the query locally, executes a similarity search against Pinecone, and injects the top-K semantic matches directly into the Gemini LLM prompt to synthesize a highly accurate answer.
+4. **Context-aware Querying:** When a user asks a question, the backend embeds the query locally, executes a similarity search against Pinecone, retrieves previous conversational history from MongoDB, and injects everything directly into the Gemini LLM prompt to synthesize a highly accurate answer.
 
 ## 6. Known Limitations
 

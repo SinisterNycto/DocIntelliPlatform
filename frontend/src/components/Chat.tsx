@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Terminal, Code2, Loader2, Send } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
+import remarkGfm from 'remark-gfm';
+import { useAuth } from '@clerk/clerk-react';
 
 interface ChatProps {
   projectId: string;
@@ -14,11 +16,15 @@ export default function Chat({ projectId, onTraceUpdate, onContextUpdate }: Chat
   const queryClient = useQueryClient();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { getToken } = useAuth();
 
   const { data: messages = [] } = useQuery({
     queryKey: ['chat', projectId],
     queryFn: async () => {
-      const res = await fetch(`http://localhost:8000/api/chat/project/${projectId}`);
+      const token = await getToken();
+      const res = await fetch(`http://localhost:8000/api/chat/project/${projectId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       if (!res.ok) throw new Error('Failed to fetch chat history');
       return res.json();
     }
@@ -34,9 +40,13 @@ export default function Chat({ projectId, onTraceUpdate, onContextUpdate }: Chat
       onTraceUpdate?.('Querying Pinecone index...');
       await new Promise(r => setTimeout(r, 800));
 
+      const token = await getToken();
       const res = await fetch(`http://localhost:8000/api/chat/`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ project_id: projectId, content })
       });
       if (!res.ok) throw new Error('Failed to send message');
@@ -108,8 +118,11 @@ export default function Chat({ projectId, onTraceUpdate, onContextUpdate }: Chat
                 {msg.role === 'user' ? (
                   <p className="whitespace-pre-wrap text-sm font-mono">{msg.content}</p>
                 ) : (
-                  <div className="prose prose-sm prose-invert prose-p:font-sans prose-headings:font-sans prose-code:font-mono prose-a:text-primary max-w-none">
-                    <ReactMarkdown rehypePlugins={[rehypeRaw]}>{msg.content}</ReactMarkdown>
+                  <div className="prose prose-sm prose-invert max-w-none 
+                    prose-p:font-sans prose-headings:font-sans prose-a:text-primary 
+                    prose-code:font-mono prose-code:bg-void prose-code:px-1 prose-code:py-0.5 prose-code:rounded-sm
+                    prose-pre:bg-void prose-pre:border prose-pre:border-grid prose-pre:text-text-data prose-pre:p-4 prose-pre:rounded-sm prose-pre:overflow-x-auto">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{msg.content}</ReactMarkdown>
                   </div>
                 )}
               </div>
