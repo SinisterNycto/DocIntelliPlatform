@@ -5,7 +5,7 @@ services:
     region: ohio
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    dockerCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: MONGODB_URI
         sync: false
@@ -33,7 +33,7 @@ services:
     region: ohio
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
-    startCommand: celery -A app.tasks worker --loglevel=info
+    dockerCommand: celery -A app.tasks worker --loglevel=info
     envVars:
       - key: MONGODB_URI
         sync: false
