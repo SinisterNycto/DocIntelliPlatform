@@ -1,24 +1,28 @@
 ### DocIntelliPlatform
-> An autonomous RAG (Retrieval-Augmented Generation) platform designed to process, vectorize, and query technical documentation using Gemini and Pinecone. When a document is ingested, the engine chunks, embeds, and indexes the content, providing a highly technical chat interface for instant semantic retrieval with exact source citations.
+> An autonomous RAG (Retrieval-Augmented Generation) platform designed to process, vectorize, and query technical documentation using local Hugging Face embeddings, Pinecone, and Gemini 2.5 Flash. When a document is ingested, the engine chunks, embeds, and indexes the content locally, providing a highly technical chat interface for instant semantic retrieval with exact source citations.
 
 ## 1. Features
 * Isolated, multi-project workspaces (namespaces) for managing independent knowledge bases.
-* Dynamic data ingestion pipelines supporting both direct web scraping (HTTPS endpoints) and raw PDF uploads.
-* Fully automated vectorization pipeline that chunks large documents and pushes embeddings directly to Pinecone.
-* Intelligent RAG querying with strict, line-by-line source citations to prevent LLM hallucination.
+* Complete workspace deletion with cascading cleanup across MongoDB and Pinecone vector stores.
+* Dynamic data ingestion pipelines supporting complex Single Page Applications (SPAs) via Jina Reader API and raw PDF uploads.
+* Fully automated, asynchronous vectorization pipeline using Celery workers that chunks large documents and pushes embeddings directly to Pinecone.
+* Intelligent RAG querying with strict, unique source citations to prevent LLM hallucination.
 * Real-time UI dashboard tracking the status of ingestion pipelines and semantic search context.
 
 ## 2. Architecture
-The application follows a robust decoupled architecture. A FastAPI backend orchestrates the complex RAG pipelines using LangChain, relying on MongoDB for metadata tracking and Pinecone as a highly scalable semantic vector index. It communicates with the Google Gemini API for state-of-the-art embeddings and generative capabilities. Finally, a React+Vite frontend visualizes these isolated workspaces and provides a terminal-inspired, data-dense query interface.
+The application follows a robust decoupled architecture. A FastAPI backend orchestrates the complex RAG pipelines using LangChain, relying on MongoDB for metadata tracking and Pinecone as a highly scalable semantic vector index. 
+
+Instead of relying on cloud providers for embeddings, the backend runs a local Hugging Face model (`all-MiniLM-L6-v2`) via `sentence-transformers` within the Docker container for unlimited, rate-limit-free vectorization. It then communicates with the Google Gemini 2.5 Flash API exclusively for the final generative text capabilities. Finally, a React+Vite frontend visualizes these isolated workspaces and provides a terminal-inspired, data-dense query interface.
 
 ## 3. Tech Stack
 
 | Layer | Technology |
 | --- | --- |
 | **Frontend** | React, Vite, TypeScript, Tailwind CSS, React Query |
-| **Backend** | Python, FastAPI, Uvicorn, Motor (Async) |
-| **AI** | Google Gemini API (`gemini-embedding-2`, `gemini-2.5-flash`), LangChain |
-| **Database** | MongoDB |
+| **Backend** | Python, FastAPI, Uvicorn, Celery |
+| **AI (Embeddings)** | Hugging Face (`all-MiniLM-L6-v2`), `sentence-transformers` |
+| **AI (Generative)** | Google Gemini API (`gemini-2.5-flash`), LangChain |
+| **Database** | MongoDB, Redis (Celery Broker) |
 | **Vector Store** | Pinecone |
 | **Deployment** | Docker, Docker Compose |
 
@@ -53,21 +57,15 @@ The application follows a robust decoupled architecture. A FastAPI backend orche
 
 ## 5. How it works
 1. **Namespace initialized:** A developer creates a new workspace on the dashboard. The backend provisions an isolated namespace in MongoDB.
-2. **Data ingested:** The user submits a URL or PDF. The FastAPI backend scrapes or extracts the text, running it through a `RecursiveCharacterTextSplitter`.
-3. **Automated Vectorization:** LangChain sends the document chunks to the Gemini Embeddings API, maps the semantic vectors, and upserts them directly to the designated Pinecone namespace.
-4. **Context-aware Querying:** When a user asks a question, the backend embeds the query, executes a similarity search against Pinecone, and injects the top-K semantic matches directly into the Gemini LLM prompt to synthesize a highly accurate answer.
+2. **Data ingested:** The user submits a URL or PDF. A background Celery worker scrapes the text (using Jina Reader for complex websites) or extracts PDF text, running it through a `RecursiveCharacterTextSplitter`.
+3. **Automated Local Vectorization:** LangChain sends the document chunks through the local Hugging Face pipeline, maps the 384-dimensional semantic vectors, and upserts them directly to the designated Pinecone namespace.
+4. **Context-aware Querying:** When a user asks a question, the backend embeds the query locally, executes a similarity search against Pinecone, and injects the top-K semantic matches directly into the Gemini LLM prompt to synthesize a highly accurate answer.
 
-## 6. Future Improvements
-* Replace managed Google Embeddings with local Hugging Face embedding models to eliminate rate-limit bottlenecks.
-* Implement user authentication and RBAC (Role-Based Access Control) for secure team collaboration.
-* Add direct GitHub repository ingestion to automatically index and chat with entire codebases.
-* Deploy self-hosted `pgvector` or Milvus to replace managed Pinecone instances.
-
-## 7. Known Limitations
+## 6. Known Limitations
 
 **1. Third-Party AI Data Privacy**
-For this portfolio project, the backend is integrated with the public Google Gemini API. In a true enterprise environment, sending proprietary corporate data to a public consumer LLM is a strict security violation. 
-* *Enterprise Fix:* To deploy this for an enterprise, the public Gemini API endpoint would be swapped for a Zero-Retention Enterprise API (like Azure OpenAI or Google Cloud Vertex AI) or an on-premise open-source model (like Llama 3) to guarantee strict SOC2 and data privacy compliance.
+For this portfolio project, the backend is integrated with the public Google Gemini API for final text generation. In a true enterprise environment, sending proprietary corporate data to a public consumer LLM is a strict security violation. 
+* *Enterprise Fix:* To deploy this for an enterprise, the public Gemini API endpoint would be swapped for an on-premise open-source model (like Llama 3) to guarantee strict SOC2 and data privacy compliance.
 
 **2. Managed Vector Database Costs**
 The platform currently relies on Pinecone's managed Serverless infrastructure for vector storage, which can become prohibitively expensive at massive enterprise scale.

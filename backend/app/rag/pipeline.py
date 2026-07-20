@@ -33,16 +33,9 @@ class RAGPipeline:
         chunks = text_splitter.split_text(text)
         metadatas = [{"source": source} for _ in chunks]
         
-        import time
-        batch_size = 50
-        for i in range(0, len(chunks), batch_size):
-            chunk_batch = chunks[i:i+batch_size]
-            meta_batch = metadatas[i:i+batch_size]
-            vector_store_manager.add_texts(project_id, chunk_batch, meta_batch)
-            
-            if i + batch_size < len(chunks):
-                logger.info(f"Rate limit prevention: sleeping for 60 seconds before next batch...")
-                time.sleep(60)
+        # With local HuggingFace embeddings, we do not need rate limit delays!
+        from app.vectorstore.pinecone_store import vector_store_manager
+        vector_store_manager.add_texts(project_id, chunks, metadatas)
                 
         return len(chunks)
 
@@ -70,7 +63,7 @@ class RAGPipeline:
         context = "\n\n".join([f"Source: {doc.metadata.get('source', 'Unknown')}\nContent: {doc.page_content}" for doc in docs])
         
         prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are an intelligent technical documentation assistant. You MUST answer the user's question accurately using ONLY the following retrieved context. If you use the context, you must append the source URLs at the very end of your response. If there are multiple sources, you MUST list each one as a separate bullet point. You MUST format EACH source exactly like this:\n\n* <span style='color: gray'>Source:</span> [URL]\n\nIf the answer is NOT contained in the context, you MUST NOT answer the question. Instead, you must say exactly: 'The answer to this question was not found in the ingested documentation.'\n\nContext:\n{context}"),
+            ("system", "You are an intelligent technical documentation assistant. You MUST answer the user's question accurately using ONLY the following retrieved context. If the answer is NOT contained in the context, you MUST NOT answer the question. Instead, you must say exactly: 'The answer to this question was not found in the ingested documentation.'\n\nIf you DO answer the question, you must append a special section at the very end of your response listing exactly which source URLs you used to formulate your answer. Format it exactly like this:\n\nUSED_SOURCES:\n- URL1\n- URL2\n\nContext:\n{context}"),
             ("user", "{question}")
         ])
 
@@ -80,19 +73,43 @@ class RAGPipeline:
             import asyncio
             response = await asyncio.wait_for(
                 chain.ainvoke({"context": context, "question": question}),
-                timeout=15.0
+                timeout=30.0
             )
             
-            # Extract unique sources
-            sources = list(set([doc.metadata.get('source', 'Unknown') for doc in docs]))
+            # All possible sources from retrieval
+            all_sources = list(set([doc.metadata.get('source', 'Unknown') for doc in docs]))
+            
+            final_answer = response.content.strip()
+            used_sources = []
+            
+            if "USED_SOURCES:" in final_answer:
+                parts = final_answer.split("USED_SOURCES:")
+                final_answer = parts[0].strip()
+                sources_text = parts[1].strip()
+                for line in sources_text.split('\n'):
+                    line = line.strip()
+                    if line.startswith('- '):
+                        used_sources.append(line[2:].strip())
+            
+            # If no sources parsed but it answered, fallback to all sources
+            if not used_sources and all_sources and "not found in the ingested documentation" not in final_answer.lower():
+                used_sources = all_sources
+                
+            # Deduplicate just in case
+            used_sources = list(set(used_sources))
+            
+            if used_sources and "not found in the ingested documentation" not in final_answer.lower():
+                final_answer += "\n\n"
+                for s in used_sources:
+                    final_answer += f"* <span style='color: gray'>Source:</span> [{s}]({s})\n"
             
             return {
-                "answer": response.content,
-                "sources": sources
+                "answer": final_answer,
+                "sources": used_sources
             }
         except asyncio.TimeoutError:
             logger.error("LLM invocation timed out.")
-            return {"answer": "I'm sorry, the AI model timed out. This may happen if the Gemini API is rate-limited. Please try again in a moment.", "sources": []}
+            return {"answer": "I'm sorry, the AI model timed out. This may happen if the Gemini Generative API is rate-limited or the network is slow. Please try again in a moment.", "sources": []}
         except Exception as e:
             logger.error(f"Error during LLM invocation: {e}")
             return {"answer": "An error occurred while communicating with the AI model.", "sources": []}

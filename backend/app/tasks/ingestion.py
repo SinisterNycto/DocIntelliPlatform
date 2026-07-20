@@ -23,27 +23,23 @@ def update_doc_status(doc_id: str, status: str, error_msg: str = None):
 
 @celery_app.task
 def process_website_task(doc_id: str, project_id: str, url: str):
-    """Scrapes a URL, extracts text, and chunks it into FAISS."""
+    """Scrapes a URL via Jina Reader, extracts markdown text, and chunks it into Pinecone."""
     logger.info(f"Starting web ingestion for {url}")
     
     try:
         update_doc_status(doc_id, "processing")
         
-        response = requests.get(url, timeout=15)
+        # Use Jina.ai Reader API to correctly render JavaScript and extract markdown
+        jina_url = f"https://r.jina.ai/{url}"
+        response = requests.get(jina_url, timeout=30)
         response.raise_for_status()
         
-        soup = BeautifulSoup(response.text, 'html.parser')
-        
-        # Remove script and style elements
-        for script in soup(["script", "style", "nav", "footer", "header"]):
-            script.decompose()
-            
-        text = soup.get_text(separator=' ', strip=True)
+        text = response.text
         
         if len(text) < 50:
             raise ValueError("Extracted text is too short. Might be an invalid page.")
 
-        # Chunk and Add to FAISS
+        # Chunk and Add to Vector Database
         num_chunks = rag_pipeline.process_document(project_id, text, source=url)
         
         logger.info(f"Successfully processed {url} into {num_chunks} chunks.")

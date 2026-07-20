@@ -1,16 +1,15 @@
 import os
 import logging
 from langchain_pinecone import PineconeVectorStore
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 class VectorStoreManager:
     def __init__(self):
-        self.embeddings = GoogleGenerativeAIEmbeddings(
-            model="models/gemini-embedding-2",
-            google_api_key=settings.GEMINI_API_KEY  # type: ignore
+        self.embeddings = HuggingFaceEmbeddings(
+            model_name="all-MiniLM-L6-v2"
         )
         self.index_name = settings.PINECONE_INDEX_NAME
         
