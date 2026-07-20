@@ -7,11 +7,15 @@ app = FastAPI(
     version="1.0.0"
 )
 
+from app.core.config import settings
+
 # Configure CORS
 origins = [
     "http://localhost:5173", # Frontend dev server
     "http://127.0.0.1:5173",
 ]
+if settings.FRONTEND_URL and settings.FRONTEND_URL not in origins:
+    origins.append(settings.FRONTEND_URL)
 
 app.add_middleware(
     CORSMiddleware,

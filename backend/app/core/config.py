@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     PINECONE_INDEX_NAME: str = os.getenv("PINECONE_INDEX_NAME", "docintelli")
     CLERK_ISSUER_URL: str = os.getenv("CLERK_ISSUER_URL", "")
     CLERK_WEBHOOK_SECRET: str = os.getenv("CLERK_WEBHOOK_SECRET", "")
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
     class Config:
         env_file = ".env"

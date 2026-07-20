@@ -16,8 +16,8 @@ export default function ProjectView() {
   const { data: project } = useQuery({
     queryKey: ['project', id],
     queryFn: async () => {
-      const token = await getToken();
-      const res = await fetch(`http://localhost:8000/api/projects/${id}`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const res = await fetch(`${apiUrl}/api/projects/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!res.ok) throw new Error('Failed to fetch project');
@@ -28,8 +28,8 @@ export default function ProjectView() {
   const { data: documents = [] } = useQuery({
     queryKey: ['documents', id],
     queryFn: async () => {
-      const token = await getToken();
-      const res = await fetch(`http://localhost:8000/api/documents/project/${id}`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const res = await fetch(`${apiUrl}/api/documents/project/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!res.ok) throw new Error('Failed to fetch documents');
@@ -40,8 +40,8 @@ export default function ProjectView() {
 
   const uploadUrl = useMutation({
     mutationFn: async (url: string) => {
-      const token = await getToken();
-      const res = await fetch(`http://localhost:8000/api/documents/url`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const res = await fetch(`${apiUrl}/api/documents/url`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -62,8 +62,9 @@ export default function ProjectView() {
     mutationFn: async (file: File) => {
       const token = await getToken();
       const formData = new FormData();
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
       formData.append('file', file);
-      const res = await fetch(`http://localhost:8000/api/documents/upload?project_id=${id}`, {
+      const res = await fetch(`${apiUrl}/api/documents/upload?project_id=${id}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData
@@ -78,8 +79,8 @@ export default function ProjectView() {
 
   const deleteDocument = useMutation({
     mutationFn: async (documentId: string) => {
-      const token = await getToken();
-      const res = await fetch(`http://localhost:8000/api/documents/${documentId}`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const res = await fetch(`${apiUrl}/api/documents/${documentId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });

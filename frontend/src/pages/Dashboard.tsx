@@ -16,7 +16,8 @@ export default function Dashboard() {
     queryKey: ['projects'],
     queryFn: async () => {
       const token = await getToken();
-      const res = await fetch('http://localhost:8000/api/projects', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const res = await fetch(`${apiUrl}/api/projects`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!res.ok) throw new Error('Failed to fetch projects');
@@ -27,7 +28,8 @@ export default function Dashboard() {
   const createProject = useMutation({
     mutationFn: async (name: string) => {
       const token = await getToken();
-      const res = await fetch('http://localhost:8000/api/projects/', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const res = await fetch(`${apiUrl}/api/projects/`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -56,7 +58,8 @@ export default function Dashboard() {
   const deleteProject = useMutation({
     mutationFn: async (projectId: string) => {
       const token = await getToken();
-      const res = await fetch(`http://localhost:8000/api/projects/${projectId}`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const res = await fetch(`${apiUrl}/api/projects/${projectId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });

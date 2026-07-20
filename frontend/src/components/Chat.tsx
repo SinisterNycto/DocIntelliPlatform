@@ -22,7 +22,8 @@ export default function Chat({ projectId, onTraceUpdate, onContextUpdate }: Chat
     queryKey: ['chat', projectId],
     queryFn: async () => {
       const token = await getToken();
-      const res = await fetch(`http://localhost:8000/api/chat/project/${projectId}`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const res = await fetch(`${apiUrl}/api/chat/project/${projectId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!res.ok) throw new Error('Failed to fetch chat history');
@@ -41,7 +42,8 @@ export default function Chat({ projectId, onTraceUpdate, onContextUpdate }: Chat
       await new Promise(r => setTimeout(r, 800));
 
       const token = await getToken();
-      const res = await fetch(`http://localhost:8000/api/chat/`, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const res = await fetch(`${apiUrl}/api/chat/`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

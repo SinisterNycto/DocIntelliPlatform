@@ -1,0 +1,58 @@
+services:
+  - type: web
+    name: docintelli-backend
+    env: docker
+    region: ohio
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: MONGODB_URI
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: docintelli-redis
+          property: connectionString
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: PINECONE_API_KEY
+        sync: false
+      - key: PINECONE_INDEX_NAME
+        value: docintelli
+      - key: CLERK_ISSUER_URL
+        sync: false
+      - key: CLERK_WEBHOOK_SECRET
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+
+  - type: worker
+    name: docintelli-worker
+    env: docker
+    region: ohio
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    startCommand: celery -A app.tasks worker --loglevel=info
+    envVars:
+      - key: MONGODB_URI
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: docintelli-redis
+          property: connectionString
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: PINECONE_API_KEY
+        sync: false
+      - key: PINECONE_INDEX_NAME
+        value: docintelli
+      - key: CLERK_ISSUER_URL
+        sync: false
+
+  - type: redis
+    name: docintelli-redis
+    ipAllowList: []
+    plan: free
+    region: ohio
