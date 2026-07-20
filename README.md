@@ -56,7 +56,7 @@ Instead of relying on cloud providers for embeddings, the backend runs a local H
    docker-compose up --build
    ```
 
-4. The backend API will be available at `http://localhost:8000` (Swagger docs at `/docs`) and the frontend dashboard at `http://localhost:5173`. 
+4. The backend API will be available at `http://localhost:8000` (Swagger docs at `/docs`) and the frontend dashboard at `http://localhost:5173`
 
 ## 5. How it works
 1. **Namespace initialized:** A developer creates a new workspace on the dashboard. The backend provisions an isolated namespace in MongoDB.
