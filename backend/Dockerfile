@@ -15,3 +15,5 @@ RUN pip install --no-cache-dir --default-timeout=1000 -r requirements.txt
 COPY . .
 
 ENV PYTHONPATH=/app
+
+CMD ["bash", "start.sh"]
