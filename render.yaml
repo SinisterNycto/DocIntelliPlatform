@@ -2,6 +2,7 @@ services:
   - type: web
     name: docintelli-backend
     env: docker
+    plan: free
     region: ohio
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
