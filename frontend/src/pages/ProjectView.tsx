@@ -201,7 +201,7 @@ export default function ProjectView() {
           </div>
         </div>
         
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto p-4 min-h-0">
           {traceStatus === 'IDLE' && activeContext.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center text-text-data/30 font-mono text-xs">
               <Database className="w-8 h-8 mb-3 opacity-20" />
