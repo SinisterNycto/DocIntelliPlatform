@@ -16,6 +16,7 @@ export default function ProjectView() {
   const { data: project } = useQuery({
     queryKey: ['project', id],
     queryFn: async () => {
+      const token = await getToken();
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
       const res = await fetch(`${apiUrl}/api/projects/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -28,6 +29,7 @@ export default function ProjectView() {
   const { data: documents = [] } = useQuery({
     queryKey: ['documents', id],
     queryFn: async () => {
+      const token = await getToken();
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
       const res = await fetch(`${apiUrl}/api/documents/project/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -40,6 +42,7 @@ export default function ProjectView() {
 
   const uploadUrl = useMutation({
     mutationFn: async (url: string) => {
+      const token = await getToken();
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
       const res = await fetch(`${apiUrl}/api/documents/url`, {
         method: 'POST',
@@ -79,6 +82,7 @@ export default function ProjectView() {
 
   const deleteDocument = useMutation({
     mutationFn: async (documentId: string) => {
+      const token = await getToken();
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
       const res = await fetch(`${apiUrl}/api/documents/${documentId}`, {
         method: 'DELETE',

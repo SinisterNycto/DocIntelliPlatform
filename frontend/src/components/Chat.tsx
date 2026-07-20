@@ -76,7 +76,7 @@ export default function Chat({ projectId, onTraceUpdate, onContextUpdate }: Chat
       setInput('');
       return { previousMessages };
     },
-    onError: (err, newContent, context) => {
+    onError: (_err, _newContent, context) => {
       onTraceUpdate?.('ERROR: Retrieval Failed');
       queryClient.setQueryData(['chat', projectId], context?.previousMessages);
     },
