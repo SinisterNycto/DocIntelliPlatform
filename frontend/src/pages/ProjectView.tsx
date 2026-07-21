@@ -136,7 +136,8 @@ export default function ProjectView() {
             <input 
               type="file"
               accept=".pdf"
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              disabled={uploadPdf.isPending}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
               onChange={(e) => {
                 if (e.target.files?.[0]) {
                   uploadPdf.mutate(e.target.files[0], {
@@ -146,9 +147,11 @@ export default function ProjectView() {
                 e.target.value = ''; // Reset so the same file can be selected again
               }}
             />
-            <div className="border border-dashed border-grid rounded-sm p-3 text-center hover:border-primary hover:text-primary transition-colors cursor-pointer bg-void">
-              <Upload className="w-4 h-4 mx-auto mb-1 opacity-50" />
-              <span className="text-[10px] font-mono uppercase tracking-widest">Upload PDF</span>
+            <div className={`border border-dashed border-grid rounded-sm p-3 text-center transition-colors bg-void ${uploadPdf.isPending ? 'opacity-50' : 'hover:border-primary hover:text-primary cursor-pointer'}`}>
+              <Upload className={`w-4 h-4 mx-auto mb-1 ${uploadPdf.isPending ? 'animate-bounce text-primary' : 'opacity-50'}`} />
+              <span className="text-[10px] font-mono uppercase tracking-widest">
+                {uploadPdf.isPending ? 'Uploading...' : 'Upload PDF'}
+              </span>
             </div>
           </div>
         </div>
