@@ -138,7 +138,12 @@ export default function ProjectView() {
               accept=".pdf"
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               onChange={(e) => {
-                if (e.target.files?.[0]) uploadPdf.mutate(e.target.files[0]);
+                if (e.target.files?.[0]) {
+                  uploadPdf.mutate(e.target.files[0], {
+                    onError: (err) => alert(err.message)
+                  });
+                }
+                e.target.value = ''; // Reset so the same file can be selected again
               }}
             />
             <div className="border border-dashed border-grid rounded-sm p-3 text-center hover:border-primary hover:text-primary transition-colors cursor-pointer bg-void">
