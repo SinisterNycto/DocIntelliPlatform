@@ -28,7 +28,7 @@ def process_website_task(doc_id: str, project_id: str, url: str):
     try:
         update_doc_status(doc_id, "processing")
         
-            jina_url = f"https://r.jina.ai/{url}"
+        jina_url = f"https://r.jina.ai/{url}"
         response = requests.get(jina_url, timeout=30)
         response.raise_for_status()
         
@@ -37,7 +37,7 @@ def process_website_task(doc_id: str, project_id: str, url: str):
         if len(text) < 50:
             raise ValueError("Extracted text is too short. Might be an invalid page.")
 
-            num_chunks = rag_pipeline.process_document(project_id, text, source=url)
+        num_chunks = rag_pipeline.process_document(project_id, text, source=url)
         
         logger.info(f"Successfully processed {url} into {num_chunks} chunks.")
         update_doc_status(doc_id, "completed")
@@ -48,7 +48,7 @@ def process_website_task(doc_id: str, project_id: str, url: str):
 
 @celery_app.task
 def process_pdf_task(doc_id: str, project_id: str, file_path: str, filename: str):
-    """Extracts text from a saved PDF file and chunks it into FAISS."""
+    """Extracts text from a saved PDF file and chunks it into Pinecone."""
     logger.info(f"Starting PDF ingestion for {filename}")
     
     try:
@@ -62,7 +62,7 @@ def process_pdf_task(doc_id: str, project_id: str, file_path: str, filename: str
         if len(text.strip()) < 50:
             raise ValueError("Could not extract meaningful text from PDF.")
 
-            num_chunks = rag_pipeline.process_document(project_id, text, source=filename)
+        num_chunks = rag_pipeline.process_document(project_id, text, source=filename)
         
         logger.info(f"Successfully processed PDF {filename} into {num_chunks} chunks.")
         update_doc_status(doc_id, "completed")
@@ -71,5 +71,5 @@ def process_pdf_task(doc_id: str, project_id: str, file_path: str, filename: str
         logger.error(f"Failed to process PDF {filename}: {e}")
         update_doc_status(doc_id, "failed", str(e))
     finally:
-            if os.path.exists(file_path):
+        if os.path.exists(file_path):
             os.remove(file_path)

@@ -1,14 +1,22 @@
+import asyncio
+from typing import List
+from pydantic import BaseModel, Field
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from app.vectorstore.pinecone_store import vector_store_manager
 from app.core.config import settings
 import logging
+
 logger = logging.getLogger(__name__)
+
+class AnswerWithSources(BaseModel):
+    answer: str = Field(description="The detailed answer to the user's question, or 'The answer to this question was not found in the ingested documentation.' if the context does not contain the answer.")
+    sources: List[str] = Field(description="A list of unique source URLs used to answer the question. If the answer was not found, this should be an empty list.")
 
 class RAGPipeline:
     def __init__(self):
-            self.llm = None
+        self.llm = None
         if settings.GEMINI_API_KEY:
             self.llm = ChatGoogleGenerativeAI(
                 model="gemini-2.5-flash",
@@ -32,12 +40,11 @@ class RAGPipeline:
         chunks = text_splitter.split_text(text)
         metadatas = [{"source": source} for _ in chunks]
         
-            from app.vectorstore.pinecone_store import vector_store_manager
         vector_store_manager.add_texts(project_id, chunks, metadatas)
                 
         return len(chunks)
 
-    async def answer_question(self, project_id: str, question: str, chat_history: list = None, top_k: int = 20) -> dict:
+    async def answer_question(self, project_id: str, question: str, chat_history: list = None, top_k: int = 5) -> dict:
         """Retrieves context and generates an answer."""
         if not self.llm:
             return {"answer": "Error: GEMINI_API_KEY is not set in backend/.env", "sources": []}
@@ -46,12 +53,10 @@ class RAGPipeline:
         if not store:
             return {"answer": "I don't have any documents to read from yet! Please ingest some documents first.", "sources": []}
 
-        import asyncio
-        
         standalone_question = question
         if chat_history and len(chat_history) > 0:
             try:
-                            history_text = ""
+                history_text = ""
                 for msg in chat_history[-4:]:
                     role = msg.get("role", "").capitalize()
                     history_text += f"{role}: {msg.get('content', '')}\n"
@@ -68,9 +73,9 @@ class RAGPipeline:
                 logger.info(f"Rephrased question for semantic search: {standalone_question}")
             except Exception as e:
                 logger.error(f"Error reformulating query: {e}")
-                            standalone_question = question
+                standalone_question = question
 
-            try:
+        try:
             docs = await asyncio.wait_for(
                 asyncio.to_thread(store.similarity_search, standalone_question, k=top_k),
                 timeout=10.0
@@ -79,10 +84,9 @@ class RAGPipeline:
             logger.error("Similarity search timed out.")
             return {"answer": "I'm sorry, retrieving context timed out. This may happen if the Gemini API is rate-limited. Please try again in a moment.", "sources": []}
 
-        
         context = "\n\n".join([f"Source: {doc.metadata.get('source', 'Unknown')}\nContent: {doc.page_content}" for doc in docs])
         
-        system_prompt = "You are an intelligent technical documentation assistant. You MUST answer the user's question accurately using ONLY the following retrieved context. If the answer is NOT contained in the context, you MUST NOT answer the question. Instead, you must say exactly: 'The answer to this question was not found in the ingested documentation.'\n\nIf you DO answer the question, you must append a special section at the very end of your response listing exactly which source URLs you used to formulate your answer. Format it exactly like this:\n\nUSED_SOURCES:\n- URL1\n- URL2\n\nContext:\n{context}"
+        system_prompt = "You are an intelligent technical documentation assistant. You MUST answer the user's question accurately using ONLY the following retrieved context. If the answer is NOT contained in the context, you MUST NOT answer the question. Instead, you must state that the answer was not found.\n\nContext:\n{context}"
         
         messages = [("system", system_prompt)]
         
@@ -99,42 +103,28 @@ class RAGPipeline:
 
         prompt = ChatPromptTemplate.from_messages(messages)
 
-        chain = prompt | self.llm
+        # Use structured output for robust extraction
+        structured_llm = self.llm.with_structured_output(AnswerWithSources)
+        chain = prompt | structured_llm
         
         try:
-            import asyncio
-            response = await asyncio.wait_for(
+            response_obj = await asyncio.wait_for(
                 chain.ainvoke({"context": context, "question": question}),
                 timeout=30.0
             )
             
-                    all_sources = list(set([doc.metadata.get('source', 'Unknown') for doc in docs]))
+            final_answer = response_obj.answer
+            used_sources = response_obj.sources
             
-            final_answer = response.content.strip()
-            used_sources = []
-            
-            if "USED_SOURCES:" in final_answer:
-                parts = final_answer.split("USED_SOURCES:")
-                final_answer = parts[0].strip()
-                sources_text = parts[1].strip()
-                for line in sources_text.split('\n'):
-                    line = line.strip()
-                    if line.startswith('- '):
-                        used_sources.append(line[2:].strip())
-            
-                    if not used_sources and all_sources and "not found in the ingested documentation" not in final_answer.lower():
-                used_sources = all_sources
-                
-                    used_sources = list(set(used_sources))
-            
-            if used_sources and "not found in the ingested documentation" not in final_answer.lower():
+            # Format answer nicely for the UI with sources appended
+            if used_sources and "not found" not in final_answer.lower():
                 final_answer += "\n\n"
-                for s in used_sources:
+                for s in set(used_sources):
                     final_answer += f"* <span style='color: gray'>Source:</span> [{s}]({s})\n"
             
             return {
                 "answer": final_answer,
-                "sources": used_sources
+                "sources": list(set(used_sources))
             }
         except asyncio.TimeoutError:
             logger.error("LLM invocation timed out.")
