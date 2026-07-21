@@ -23,6 +23,11 @@ subprocess.Popen(
     cwd=backend_dir
 )
 
+print("Launching dummy Gradio app to satisfy ZeroGPU supervisor...")
+import gradio as gr
+demo = gr.Interface(fn=dummy_gpu_function, inputs="text", outputs="text")
+demo.launch(server_name="127.0.0.1", server_port=7861, prevent_thread_lock=True)
+
 print("Starting FastAPI server on port 7860...")
 # HuggingFace requires web servers to listen on port 7860
 subprocess.run(
