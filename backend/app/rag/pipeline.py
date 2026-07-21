@@ -49,10 +49,35 @@ class RAGPipeline:
             return {"answer": "I don't have any documents to read from yet! Please ingest some documents first.", "sources": []}
 
         import asyncio
-        # Retrieve top K most relevant chunks (running in a thread to avoid blocking FastAPI)
+        
+        standalone_question = question
+        if chat_history and len(chat_history) > 0:
+            try:
+                # Format recent chat history for the prompt (last 2 turns)
+                history_text = ""
+                for msg in chat_history[-4:]:
+                    role = msg.get("role", "").capitalize()
+                    history_text += f"{role}: {msg.get('content', '')}\n"
+                    
+                condense_prompt = ChatPromptTemplate.from_template(
+                    "Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question containing all necessary context (entities, subjects) from the conversation. If the question is already standalone, return it as is.\n\nChat History:\n{chat_history}\nFollow Up Input: {question}\nStandalone question:"
+                )
+                condense_chain = condense_prompt | self.llm
+                response = await asyncio.wait_for(
+                    condense_chain.ainvoke({"chat_history": history_text, "question": question}),
+                    timeout=5.0
+                )
+                standalone_question = response.content.strip()
+                logger.info(f"Rephrased question for semantic search: {standalone_question}")
+            except Exception as e:
+                logger.error(f"Error reformulating query: {e}")
+                # Fallback to original question if transformation fails
+                standalone_question = question
+
+        # Retrieve top K most relevant chunks using the standalone contextualized question
         try:
             docs = await asyncio.wait_for(
-                asyncio.to_thread(store.similarity_search, question, k=top_k),
+                asyncio.to_thread(store.similarity_search, standalone_question, k=top_k),
                 timeout=10.0
             )
         except asyncio.TimeoutError:
