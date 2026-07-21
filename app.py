@@ -2,6 +2,11 @@ import os
 import sys
 import subprocess
 import time
+import spaces
+
+@spaces.GPU
+def dummy_gpu_function():
+    pass
 
 # Add the 'backend' directory to the Python path so imports work
 current_dir = os.path.dirname(os.path.abspath(__file__))
