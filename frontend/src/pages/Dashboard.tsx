@@ -81,7 +81,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-void/80 backdrop-blur-md flex flex-col font-sans text-text-data">
-      {/* Infrastructure Header */}
+
       <header className="border-b border-grid bg-surface/50">
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">

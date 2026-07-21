@@ -2,7 +2,6 @@ from celery import Celery
 from app.core.config import settings
 import os
 
-# Initialize Celery pointing to our Redis broker
 celery_app = Celery(
     "docintelli_worker",
     broker=settings.REDIS_URL,

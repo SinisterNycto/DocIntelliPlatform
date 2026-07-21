@@ -8,8 +8,7 @@ logger = logging.getLogger(__name__)
 
 class RAGPipeline:
     def __init__(self):
-        # We initialize the LLM if the API key is present
-        self.llm = None
+            self.llm = None
         if settings.GEMINI_API_KEY:
             self.llm = ChatGoogleGenerativeAI(
                 model="gemini-2.5-flash",
@@ -33,8 +32,7 @@ class RAGPipeline:
         chunks = text_splitter.split_text(text)
         metadatas = [{"source": source} for _ in chunks]
         
-        # With local HuggingFace embeddings, we do not need rate limit delays!
-        from app.vectorstore.pinecone_store import vector_store_manager
+            from app.vectorstore.pinecone_store import vector_store_manager
         vector_store_manager.add_texts(project_id, chunks, metadatas)
                 
         return len(chunks)
@@ -53,8 +51,7 @@ class RAGPipeline:
         standalone_question = question
         if chat_history and len(chat_history) > 0:
             try:
-                # Format recent chat history for the prompt (last 2 turns)
-                history_text = ""
+                            history_text = ""
                 for msg in chat_history[-4:]:
                     role = msg.get("role", "").capitalize()
                     history_text += f"{role}: {msg.get('content', '')}\n"
@@ -71,11 +68,9 @@ class RAGPipeline:
                 logger.info(f"Rephrased question for semantic search: {standalone_question}")
             except Exception as e:
                 logger.error(f"Error reformulating query: {e}")
-                # Fallback to original question if transformation fails
-                standalone_question = question
+                            standalone_question = question
 
-        # Retrieve top K most relevant chunks using the standalone contextualized question
-        try:
+            try:
             docs = await asyncio.wait_for(
                 asyncio.to_thread(store.similarity_search, standalone_question, k=top_k),
                 timeout=10.0
@@ -113,8 +108,7 @@ class RAGPipeline:
                 timeout=30.0
             )
             
-            # All possible sources from retrieval
-            all_sources = list(set([doc.metadata.get('source', 'Unknown') for doc in docs]))
+                    all_sources = list(set([doc.metadata.get('source', 'Unknown') for doc in docs]))
             
             final_answer = response.content.strip()
             used_sources = []
@@ -128,12 +122,10 @@ class RAGPipeline:
                     if line.startswith('- '):
                         used_sources.append(line[2:].strip())
             
-            # If no sources parsed but it answered, fallback to all sources
-            if not used_sources and all_sources and "not found in the ingested documentation" not in final_answer.lower():
+                    if not used_sources and all_sources and "not found in the ingested documentation" not in final_answer.lower():
                 used_sources = all_sources
                 
-            # Deduplicate just in case
-            used_sources = list(set(used_sources))
+                    used_sources = list(set(used_sources))
             
             if used_sources and "not found in the ingested documentation" not in final_answer.lower():
                 final_answer += "\n\n"

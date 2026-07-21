@@ -9,7 +9,6 @@ app = FastAPI(
 
 from app.core.config import settings
 
-# Configure CORS
 origins = [
     "http://localhost:5173", # Frontend dev server
     "http://127.0.0.1:5173",

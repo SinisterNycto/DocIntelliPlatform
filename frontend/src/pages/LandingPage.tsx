@@ -7,7 +7,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-void flex flex-col relative overflow-hidden font-sans text-text-data">
       
-      {/* Quiet Ambient Pipeline SVG Background */}
+
       <div className="absolute inset-0 pointer-events-none opacity-[0.07] flex items-center justify-center text-text-data">
         <svg width="100%" height="100%" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
           <defs>
@@ -23,24 +23,24 @@ export default function LandingPage() {
           
           <rect width="100%" height="100%" fill="url(#mesh)" />
           
-          {/* Incoming Document Nodes */}
+
           <rect x="10%" y="20%" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1" transform="rotate(15 115 215)"/>
           <rect x="85%" y="75%" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1" transform="rotate(-10 870 770)"/>
           <rect x="15%" y="80%" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1" transform="rotate(45 160 810)"/>
           
-          {/* Converging Pipeline Lines */}
+
           <path d="M 130 230 Q 300 300 500 500" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.5"/>
           <path d="M 850 750 Q 700 600 500 500" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.5"/>
           <path d="M 170 800 Q 350 650 500 500" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.5"/>
           
-          {/* Central Synthesis Sphere */}
+
           <circle cx="500" cy="500" r="100" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="4 4" />
           <circle cx="500" cy="500" r="120" fill="none" stroke="currentColor" strokeWidth="0.5" opacity="0.5" />
           <circle cx="500" cy="500" r="80" fill="currentColor" opacity="0.05" />
         </svg>
       </div>
 
-      {/* Header */}
+
       <header className="relative z-10 max-w-7xl mx-auto w-full px-6 h-20 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="font-mono font-semibold tracking-wide text-sm">
@@ -62,10 +62,10 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* Ambient Glow */}
+
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
 
-      {/* Hero Section */}
+
       <main className="flex-1 relative z-10 flex flex-col items-center justify-center text-center px-4 pt-32 pb-24">
         <h1 className="text-5xl md:text-7xl font-sans font-bold tracking-tight text-text-data mb-6 max-w-4xl drop-shadow-sm">
           Your docs.<br />
@@ -92,7 +92,7 @@ export default function LandingPage() {
           </Link>
         </SignedIn>
 
-        {/* Feature Grid */}
+
         <div className="mt-32 max-w-6xl w-full grid grid-cols-1 md:grid-cols-3 gap-6 text-left px-6">
           <div className="p-8 rounded-2xl bg-surface/40 border border-grid backdrop-blur-sm">
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-6">

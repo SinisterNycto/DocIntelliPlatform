@@ -38,12 +38,10 @@ async def ingest_url(payload: dict, user_id: str = Depends(get_current_user)):
         
     await verify_project_ownership(project_id, user_id)
 
-    # Create document record
     new_doc = DocumentModel(project_id=project_id, filename=url, url=url, status="pending")
     result = await db.documents.insert_one(new_doc.dict(by_alias=True, exclude_none=True))
     doc_id = str(result.inserted_id)
     
-    # Dispatch Celery task
     process_website_task.delay(doc_id, project_id, url)
     
     return {"message": "URL ingestion started", "document_id": doc_id}
@@ -55,12 +53,10 @@ async def upload_pdf(project_id: str, file: UploadFile = File(...), user_id: str
     if not file.filename.endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
 
-    # Create document record
     new_doc = DocumentModel(project_id=project_id, filename=file.filename, status="pending")
     result = await db.documents.insert_one(new_doc.dict(by_alias=True, exclude_none=True))
     doc_id = str(result.inserted_id)
     
-    # Save file temporarily
     upload_dir = "/tmp/uploads"
     os.makedirs(upload_dir, exist_ok=True)
     file_path = os.path.join(upload_dir, f"{doc_id}_{file.filename}")
@@ -68,7 +64,6 @@ async def upload_pdf(project_id: str, file: UploadFile = File(...), user_id: str
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
         
-    # Dispatch Celery task
     process_pdf_task.delay(doc_id, project_id, file_path, file.filename)
     
     return {"message": "PDF ingestion started", "document_id": doc_id}
@@ -78,12 +73,10 @@ async def delete_document(document_id: str, user_id: str = Depends(get_current_u
     if not ObjectId.is_valid(document_id):
         raise HTTPException(status_code=400, detail="Invalid document ID")
         
-    # Find the document to get the project_id
     doc = await db.documents.find_one({"_id": ObjectId(document_id)})
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
         
-    # Verify the user owns the project this document belongs to
     await verify_project_ownership(doc["project_id"], user_id)
         
     result = await db.documents.delete_one({"_id": ObjectId(document_id)})

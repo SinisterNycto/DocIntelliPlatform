@@ -101,7 +101,7 @@ export default function ProjectView() {
   return (
     <div className="absolute inset-0 flex items-stretch bg-void/80 backdrop-blur-md text-text-data font-sans overflow-hidden">
       
-      {/* LEFT COLUMN: Data Ingestion Pipeline */}
+
       <div className="w-[300px] h-full border-r border-grid bg-surface/30 flex flex-col shrink-0 min-h-0 overflow-hidden">
         <div className="p-4 border-b border-grid bg-surface flex flex-col gap-3 shrink-0">
           <Link to="/dashboard" className="w-full flex justify-center items-center gap-2 bg-void border border-primary text-primary hover:bg-primary hover:text-void transition-colors py-2 rounded-sm text-xs font-mono uppercase tracking-widest font-bold">
@@ -184,7 +184,7 @@ export default function ProjectView() {
                       <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
-                  {/* Pipeline Flow Visualization */}
+
                   <div className="flex items-center gap-1 mt-1">
                     <div className={`h-1 flex-1 rounded-full ${doc.status === 'completed' || doc.status === 'processing' ? 'bg-primary' : 'bg-grid'}`}></div>
                     <div className={`h-1 flex-1 rounded-full ${doc.status === 'completed' ? 'bg-primary' : 'bg-grid'} ${doc.status === 'processing' ? 'animate-pulse bg-accent' : ''}`}></div>
@@ -200,7 +200,7 @@ export default function ProjectView() {
         </div>
       </div>
 
-      {/* CENTER COLUMN: RAG Interface */}
+
       <div className="flex-1 h-full flex flex-col bg-transparent border-r border-grid min-w-[400px]">
         <div className="h-14 border-b border-grid flex items-center px-6 bg-surface/50 shrink-0 justify-between">
           <div className="flex items-center gap-2 text-primary font-mono text-xs uppercase tracking-widest">
@@ -221,7 +221,7 @@ export default function ProjectView() {
         />
       </div>
 
-      {/* RIGHT COLUMN: Vector Context Window */}
+
       <div className="w-[350px] h-full bg-surface/30 flex flex-col shrink-0">
         <div className="h-14 border-b border-grid flex items-center px-4 bg-surface/50 shrink-0">
           <div className="flex items-center gap-2 text-accent font-mono text-xs uppercase tracking-widest">

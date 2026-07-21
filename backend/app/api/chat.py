@@ -36,21 +36,17 @@ async def send_message(payload: dict, user_id: str = Depends(get_current_user)):
         
     await verify_project_ownership(project_id, user_id)
 
-    # 1. Save user message to DB
     user_msg = ChatMessageModel(project_id=project_id, role="user", content=content)
     await db.messages.insert_one(user_msg.dict(by_alias=True, exclude_none=True))
     
-    # 2. Retrieve recent chat history to give LLM context
     history_cursor = db.messages.find({"project_id": project_id}).sort("created_at", -1).limit(10)
     history = []
     async for msg in history_cursor:
         history.append(msg)
     history.reverse() # chronological order
     
-    # 3. Get answer from RAG Pipeline
     result = await rag_pipeline.answer_question(project_id, content, chat_history=history)
     
-    # 3. Save assistant message to DB
     assistant_msg = ChatMessageModel(
         project_id=project_id, 
         role="assistant", 
