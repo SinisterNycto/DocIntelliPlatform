@@ -17,7 +17,7 @@ export default function Dashboard() {
     queryFn: async () => {
       const token = await getToken();
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-      const res = await fetch(`${apiUrl}/api/projects`, {
+      const res = await fetch(`${apiUrl}/api/projects/`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!res.ok) throw new Error('Failed to fetch projects');
