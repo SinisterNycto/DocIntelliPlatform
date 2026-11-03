@@ -6,6 +6,12 @@ class Settings(BaseSettings):
     DATABASE_NAME: str = "docintelli"
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    GEMINI_MODEL: str = "gemini-3.8-flash"
+    EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"
+    RERANK_ENABLED: bool = True
+    RERANK_MODEL: str = "BAAI/bge-reranker-base"
+    RETRIEVAL_CANDIDATES: int = 20
+    MAX_UPLOAD_BYTES: int = 25 * 1024 * 1024
     PINECONE_API_KEY: str = os.getenv("PINECONE_API_KEY", "")
     PINECONE_INDEX_NAME: str = os.getenv("PINECONE_INDEX_NAME", "docintelli")
     CLERK_ISSUER_URL: str = os.getenv("CLERK_ISSUER_URL", "")

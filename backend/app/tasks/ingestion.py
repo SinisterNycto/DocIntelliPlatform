@@ -1,6 +1,5 @@
 import os
 import requests
-from bs4 import BeautifulSoup
 import fitz  # PyMuPDF
 from app.tasks.celery_app import celery_app
 from app.rag.pipeline import rag_pipeline
@@ -37,7 +36,7 @@ def process_website_task(doc_id: str, project_id: str, url: str):
         if len(text) < 50:
             raise ValueError("Extracted text is too short. Might be an invalid page.")
 
-        num_chunks = rag_pipeline.process_document(project_id, text, source=url)
+        num_chunks = rag_pipeline.process_document(project_id, text, source=url, document_id=doc_id)
         
         logger.info(f"Successfully processed {url} into {num_chunks} chunks.")
         update_doc_status(doc_id, "completed")
@@ -54,15 +53,22 @@ def process_pdf_task(doc_id: str, project_id: str, file_path: str, filename: str
     try:
         update_doc_status(doc_id, "processing")
         
-        text = ""
+        parts = []
         with fitz.open(file_path) as pdf:
-            for page in pdf:
-                text += page.get_text() + "\n\n"
-        
-        if len(text.strip()) < 50:
+            for page_number, page in enumerate(pdf, start=1):
+                page_text = page.get_text() or ""
+                if page_text.strip():
+                    parts.append((page_text, {
+                        "source": filename,
+                        "document_id": doc_id,
+                        "page": page_number,
+                    }))
+
+        extracted = sum(len(page_text.strip()) for page_text, _ in parts)
+        if extracted < 50:
             raise ValueError("Could not extract meaningful text from PDF.")
 
-        num_chunks = rag_pipeline.process_document(project_id, text, source=filename)
+        num_chunks = rag_pipeline.process_parts(project_id, parts)
         
         logger.info(f"Successfully processed PDF {filename} into {num_chunks} chunks.")
         update_doc_status(doc_id, "completed")

@@ -4,14 +4,14 @@ import random
 import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
-import google.generativeai as genai
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from google import genai
+from langchain_text_splitters import MarkdownTextSplitter
 
 # Load environment variables
 load_dotenv(os.path.join(os.path.dirname(__file__), '../.env'))
 
-genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-model = genai.GenerativeModel('gemini-2.5-flash')
+def gemini_client():
+    return genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 
 def get_text_from_url(url):
     print(f"Fetching {url}...")
@@ -24,7 +24,7 @@ def get_text_from_url(url):
 
 def generate_questions(text, num_questions=10):
     print("Chunking text...")
-    splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
+    splitter = MarkdownTextSplitter(chunk_size=1000, chunk_overlap=0)
     chunks = splitter.split_text(text)
     
     # Randomly sample chunks to generate questions
@@ -41,8 +41,9 @@ def generate_questions(text, num_questions=10):
         {chunk}
         """
         try:
-            response = model.generate_content(prompt)
-            question = response.text.strip()
+            model_name = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
+            response = gemini_client().models.generate_content(model=model_name, contents=prompt)
+            question = (response.text or "").strip()
             if question:
                 dataset.append({
                     "id": i,

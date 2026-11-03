@@ -36,15 +36,15 @@ async def send_message(payload: dict, user_id: str = Depends(get_current_user)):
         
     await verify_project_ownership(project_id, user_id)
 
-    user_msg = ChatMessageModel(project_id=project_id, role="user", content=content)
-    await db.messages.insert_one(user_msg.dict(by_alias=True, exclude_none=True))
-    
-    history_cursor = db.messages.find({"project_id": project_id}).sort("created_at", -1).limit(10)
     history = []
+    history_cursor = db.messages.find({"project_id": project_id}).sort("created_at", -1).limit(10)
     async for msg in history_cursor:
         history.append(msg)
-    history.reverse() # chronological order
-    
+    history.reverse()
+
+    user_msg = ChatMessageModel(project_id=project_id, role="user", content=content)
+    await db.messages.insert_one(user_msg.dict(by_alias=True, exclude_none=True))
+
     result = await rag_pipeline.answer_question(project_id, content, chat_history=history)
     
     assistant_msg = ChatMessageModel(

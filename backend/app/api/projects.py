@@ -46,11 +46,9 @@ async def delete_project(project_id: str, user_id: str = Depends(get_current_use
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
         
-    # Delete the project document
     await db.projects.delete_one({"_id": ObjectId(project_id), "user_id": user_id})
-    
-    # Delete all associated documents
     await db.documents.delete_many({"project_id": project_id})
+    await db.messages.delete_many({"project_id": project_id})
     
     # Delete the vector namespace
     from app.vectorstore.pinecone_store import vector_store_manager

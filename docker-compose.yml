@@ -31,7 +31,6 @@ services:
       - ./backend/.env
     volumes:
       - ./backend:/app
-      - faiss_data:/app/data/faiss_index
     depends_on:
       - mongodb
       - redis
@@ -49,7 +48,6 @@ services:
       - ./backend/.env
     volumes:
       - ./backend:/app
-      - faiss_data:/app/data/faiss_index
     depends_on:
       - redis
       - mongodb
@@ -69,4 +67,3 @@ services:
 
 volumes:
   mongodb_data:
-  faiss_data:
