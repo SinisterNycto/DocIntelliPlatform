@@ -11,11 +11,19 @@ from app.rag.citations import (
     append_sources,
     citation_labels,
     history_without_current_question,
+    looks_like_followup,
     message_text,
 )
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Tried in order when the selected model returns 503 or times out.
+FALLBACK_MODELS = (
+    "gemini-2.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
+)
 
 
 class AnswerWithSources(BaseModel):
@@ -29,14 +37,53 @@ class RAGPipeline:
         self.llm = None
         self._reranker = None
         if settings.GEMINI_API_KEY:
-            # Gemini 3 uses thinking_level. Keep temperature low so answers stay tied to the docs.
-            self.llm = ChatGoogleGenerativeAI(
-                model=settings.GEMINI_MODEL,
-                api_key=settings.GEMINI_API_KEY,
-                temperature=0.2,
-                thinking_level="low",
-            )
+            self.llm = self._make_llm(settings.GEMINI_MODEL)
             logger.info("Generative model: %s", settings.GEMINI_MODEL)
+
+    def _candidate_models(self) -> List[str]:
+        names = []
+        for name in (settings.GEMINI_MODEL, *FALLBACK_MODELS):
+            if name and name not in names:
+                names.append(name)
+        return names
+
+    def _make_llm(self, model_name: str) -> ChatGoogleGenerativeAI:
+        kwargs = {
+            "model": model_name,
+            "api_key": settings.GEMINI_API_KEY,
+            "temperature": 0.2,
+            "max_retries": 0,
+            "max_tokens": 512,
+        }
+        if model_name.startswith("gemini-3"):
+            kwargs["thinking_level"] = "minimal"
+        return ChatGoogleGenerativeAI(**kwargs)
+
+    @staticmethod
+    def _model_is_busy(exc: Exception) -> bool:
+        if isinstance(exc, asyncio.TimeoutError):
+            return True
+        text = str(exc).lower()
+        return any(token in text for token in ("503", "unavailable", "high demand", "429", "resource_exhausted"))
+
+    async def _invoke(self, build_chain, payload: dict, timeout: float):
+        last_error = None
+        for model_name in self._candidate_models():
+            try:
+                result = await asyncio.wait_for(
+                    build_chain(self._make_llm(model_name)).ainvoke(payload),
+                    timeout=timeout,
+                )
+                if model_name != settings.GEMINI_MODEL:
+                    logger.warning("Answered with fallback model %s", model_name)
+                return result
+            except Exception as exc:
+                last_error = exc
+                if self._model_is_busy(exc):
+                    logger.warning("Model %s unavailable (%s). Trying the next model.", model_name, exc)
+                    continue
+                raise
+        raise last_error
 
     def _splitter(self, chunk_size: int, chunk_overlap: int) -> MarkdownTextSplitter:
         return MarkdownTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
@@ -97,7 +144,7 @@ class RAGPipeline:
 
         prior_history = history_without_current_question(chat_history or [], question)
         standalone_question = question
-        if prior_history:
+        if prior_history and looks_like_followup(question):
             try:
                 history_text = ""
                 for msg in prior_history[-4:]:
@@ -107,10 +154,10 @@ class RAGPipeline:
                 condense_prompt = ChatPromptTemplate.from_template(
                     "Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question containing all necessary context (entities, subjects) from the conversation. If the question is already standalone, return it as is.\n\nChat History:\n{chat_history}\nFollow Up Input: {question}\nStandalone question:"
                 )
-                condense_chain = condense_prompt | self.llm
-                response = await asyncio.wait_for(
-                    condense_chain.ainvoke({"chat_history": history_text, "question": question}),
-                    timeout=20.0,
+                response = await self._invoke(
+                    lambda llm: condense_prompt | llm,
+                    {"chat_history": history_text, "question": question},
+                    timeout=12.0,
                 )
                 standalone_question = message_text(response) or question
                 logger.info("Rephrased question for semantic search: %s", standalone_question)
@@ -118,7 +165,7 @@ class RAGPipeline:
                 logger.error("Error reformulating query: %s", e)
                 standalone_question = question
 
-        candidate_k = max(top_k, settings.RETRIEVAL_CANDIDATES)
+        candidate_k = max(top_k, settings.RETRIEVAL_CANDIDATES) if settings.RERANK_ENABLED else top_k
         try:
             docs = await asyncio.wait_for(
                 asyncio.to_thread(store.similarity_search, standalone_question, k=candidate_k),
@@ -151,13 +198,12 @@ class RAGPipeline:
         messages.append(("user", "{question}"))
 
         prompt = ChatPromptTemplate.from_messages(messages)
-        structured_llm = self.llm.with_structured_output(AnswerWithSources)
-        chain = prompt | structured_llm
 
         try:
-            response_obj = await asyncio.wait_for(
-                chain.ainvoke({"context": context, "question": question}),
-                timeout=45.0,
+            response_obj = await self._invoke(
+                lambda llm: prompt | llm.with_structured_output(AnswerWithSources),
+                {"context": context, "question": question},
+                timeout=20.0,
             )
             if isinstance(response_obj, dict):
                 final_answer = response_obj.get("answer") or ""
@@ -169,11 +215,10 @@ class RAGPipeline:
                 final_answer = append_sources(final_answer, labels)
 
             return {"answer": final_answer, "sources": labels}
-        except asyncio.TimeoutError:
-            logger.error("LLM invocation timed out.")
-            return {"answer": "I'm sorry, the AI model timed out before it could answer. Please try again in a moment.", "sources": []}
         except Exception as e:
             logger.error("Error during LLM invocation: %s", e)
+            if self._model_is_busy(e):
+                return {"answer": "The AI model is busy right now. Please try again in a moment.", "sources": []}
             return {"answer": "An error occurred while communicating with the AI model.", "sources": []}
 
 

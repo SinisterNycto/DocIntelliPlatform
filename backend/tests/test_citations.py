@@ -4,6 +4,7 @@ from app.rag.citations import (
     citation_label,
     citation_labels,
     history_without_current_question,
+    looks_like_followup,
     message_text,
 )
 
@@ -36,6 +37,12 @@ def test_citation_uses_retrieved_metadata_not_model_urls():
     ]
     assert citation_labels(docs) == ["https://example.com/docs", "guide.pdf (page 3)"]
     assert citation_label({"source": "notes.pdf", "page": 1}) == "notes.pdf (page 1)"
+
+
+def test_standalone_questions_skip_the_extra_model_call():
+    assert looks_like_followup("who is the PM of india?") is False
+    assert looks_like_followup("what about that?") is True
+    assert looks_like_followup("and the default?") is True
 
 
 def test_message_text_reads_string_and_block_content():

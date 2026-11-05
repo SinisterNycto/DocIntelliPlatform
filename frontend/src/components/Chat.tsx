@@ -33,13 +33,8 @@ export default function Chat({ projectId, onTraceUpdate, onContextUpdate }: Chat
 
   const sendMessage = useMutation({
     mutationFn: async (content: string) => {
-      // 1. Simulate Vectorizing
-      onTraceUpdate?.('Vectorizing query (3072d)...');
-      await new Promise(r => setTimeout(r, 600));
-      
-      // 2. Simulate Pinecone query
+      onTraceUpdate?.('Vectorizing query (384d)...');
       onTraceUpdate?.('Querying Pinecone index...');
-      await new Promise(r => setTimeout(r, 800));
 
       const token = await getToken();
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -58,8 +53,6 @@ export default function Chat({ projectId, onTraceUpdate, onContextUpdate }: Chat
       // 3. Update Trace and Context with actual sources
       onTraceUpdate?.('Retrieved chunks. LLM generating response...');
       onContextUpdate?.(data.sources || []);
-      await new Promise(r => setTimeout(r, 800));
-      
       onTraceUpdate?.('IDLE');
       return data;
     },

@@ -26,6 +26,13 @@ app.add_middleware(
 
 from app.api import projects, documents, chat, webhooks
 
+@app.on_event("startup")
+def warmup_embeddings():
+    # Load the local embedding model during startup so the first question does not pay for it.
+    from app.vectorstore.pinecone_store import vector_store_manager
+    if settings.PINECONE_API_KEY:
+        vector_store_manager.embeddings
+
 app.include_router(projects.router, prefix="/api/projects", tags=["projects"])
 app.include_router(documents.router, prefix="/api/documents", tags=["documents"])
 app.include_router(chat.router, prefix="/api/chat", tags=["chat"])

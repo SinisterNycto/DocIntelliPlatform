@@ -1,5 +1,5 @@
 ### DocIntelliPlatform
-> An autonomous RAG (Retrieval-Augmented Generation) platform designed to process, vectorize, and query technical documentation using local Hugging Face embeddings, Pinecone, and Gemini 3.8 Flash. When a document is ingested, the engine chunks, embeds, and indexes the content locally, providing a highly technical chat interface for instant semantic retrieval with exact source citations.
+> An autonomous RAG (Retrieval-Augmented Generation) platform designed to process, vectorize, and query technical documentation using local Hugging Face embeddings, Pinecone, and Gemini 2.5 Flash. When a document is ingested, the engine chunks, embeds, and indexes the content locally, providing a highly technical chat interface for instant semantic retrieval with exact source citations.
 
 ## 1. Features
 * **Isolated, multi-tenant workspaces:** Complete namespace separation ensuring data privacy across multiple user accounts via Clerk JWT authentication.
@@ -14,7 +14,7 @@
 ## 2. Architecture
 The application follows a robust decoupled architecture. A FastAPI backend orchestrates the complex RAG pipelines using LangChain, relying on MongoDB for metadata tracking and Pinecone as a highly scalable semantic vector index. 
 
-Instead of relying on cloud providers for embeddings, the backend runs a local Hugging Face model (`BAAI/bge-small-en-v1.5`) via `sentence-transformers` within the Docker container for unlimited, rate-limit-free vectorization, then reranks the top matches before answering. It communicates with the Google Gemini API (`gemini-3.8-flash`) exclusively for the final generative text capabilities. Finally, a React+Vite frontend visualizes these isolated workspaces and provides a terminal-inspired, data-dense query interface.
+Instead of relying on cloud providers for embeddings, the backend runs a local Hugging Face model (`BAAI/bge-small-en-v1.5`) via `sentence-transformers` within the Docker container for unlimited, rate-limit-free vectorization, then answers from the closest matches. Reranking is off by default because it adds several seconds on CPU; set `RERANK_ENABLED=true` to turn it on. It communicates with the Google Gemini API (`gemini-2.5-flash`) exclusively for the final generative text capabilities. Finally, a React+Vite frontend visualizes these isolated workspaces and provides a terminal-inspired, data-dense query interface.
 
 ## 3. Tech Stack
 
@@ -23,7 +23,7 @@ Instead of relying on cloud providers for embeddings, the backend runs a local H
 | **Frontend** | React, Vite, TypeScript, Tailwind CSS, React Query, Clerk Auth |
 | **Backend** | Python, FastAPI, Uvicorn, Celery |
 | **AI (Embeddings)** | Hugging Face (`BAAI/bge-small-en-v1.5`), `BAAI/bge-reranker-base`, `sentence-transformers` |
-| **AI (Generative)** | Google Gemini API (`gemini-3.8-flash`), LangChain |
+| **AI (Generative)** | Google Gemini API (`gemini-2.5-flash`), LangChain |
 | **Database** | MongoDB, Redis (Celery Broker) |
 | **Vector Store** | Pinecone |
 | **Authentication** | Clerk (JWT parsing in FastAPI) |

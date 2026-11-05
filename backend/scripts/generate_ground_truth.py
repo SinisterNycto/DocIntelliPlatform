@@ -41,7 +41,7 @@ def generate_questions(text, num_questions=10):
         {chunk}
         """
         try:
-            model_name = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
+            model_name = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
             response = gemini_client().models.generate_content(model=model_name, contents=prompt)
             question = (response.text or "").strip()
             if question:

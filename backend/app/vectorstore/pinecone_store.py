@@ -40,6 +40,7 @@ class LocalEmbeddings(Embeddings):
 class VectorStoreManager:
     def __init__(self):
         self._embeddings = None
+        self._stores = {}
         self.index_name = settings.PINECONE_INDEX_NAME
         if settings.PINECONE_API_KEY:
             os.environ["PINECONE_API_KEY"] = settings.PINECONE_API_KEY
@@ -55,11 +56,15 @@ class VectorStoreManager:
             logger.error("PINECONE_API_KEY is not set.")
             return None
 
-        return PineconeVectorStore(
-            index_name=self.index_name,
-            embedding=self.embeddings,
-            namespace=project_id,
-        )
+        store = self._stores.get(project_id)
+        if store is None:
+            store = PineconeVectorStore(
+                index_name=self.index_name,
+                embedding=self.embeddings,
+                namespace=project_id,
+            )
+            self._stores[project_id] = store
+        return store
 
     def add_texts(self, project_id: str, texts: list[str], metadatas: list[dict] = None):
         store = self.get_store(project_id)

@@ -1,4 +1,17 @@
+import re
 from typing import List
+
+_FOLLOWUP = re.compile(
+    r"\b(it|that|this|those|these|they|them|he|she|his|her|above|previous|earlier|same)\b",
+    re.IGNORECASE,
+)
+
+
+def looks_like_followup(question: str) -> bool:
+    words = (question or "").strip().split()
+    if len(words) <= 4:
+        return True
+    return bool(_FOLLOWUP.search(question or ""))
 
 
 def history_without_current_question(history: list, question: str) -> list:

@@ -11,7 +11,7 @@ google-genai>=2.20.0,<3
 pinecone>=6,<8
 langchain-pinecone==0.2.13
 celery==5.4.0
-redis==5.0.7
+redis>=6.1.0,<7
 beautifulsoup4==4.12.3
 requests==2.32.3
 PyMuPDF==1.24.5 ; python_version < '3.13'
