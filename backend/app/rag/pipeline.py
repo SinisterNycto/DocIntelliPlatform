@@ -10,6 +10,15 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+def _citation_label(metadata: dict) -> str:
+    source = (metadata or {}).get("source") or "Unknown"
+    page = (metadata or {}).get("page")
+    if isinstance(page, float) and page.is_integer():
+        page = int(page)
+    if isinstance(page, int) and page > 0:
+        return f"{source} (page {page})"
+    return str(source)
+
 class AnswerWithSources(BaseModel):
     answer: str = Field(description="The detailed answer to the user's question, or 'The answer to this question was not found in the ingested documentation.' if the context does not contain the answer.")
     sources: List[str] = Field(description="A list of unique source URLs used to answer the question. If the answer was not found, this should be an empty list.")
@@ -30,7 +39,7 @@ class RAGPipeline:
             length_function=len,
         )
 
-    def process_document(self, project_id: str, text: str, source: str, chunk_size: int = 1000, chunk_overlap: int = 200):
+    def process_document(self, project_id: str, text: str, source: str, chunk_size: int = 1000, chunk_overlap: int = 200, page: int = None):
         """Chunks text and adds it to the project's vector store in batches to respect API limits."""
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,
@@ -38,7 +47,10 @@ class RAGPipeline:
             length_function=len,
         )
         chunks = text_splitter.split_text(text)
-        metadatas = [{"source": source} for _ in chunks]
+        meta = {"source": source}
+        if page is not None:
+            meta["page"] = page
+        metadatas = [dict(meta) for _ in chunks]
         
         vector_store_manager.add_texts(project_id, chunks, metadatas)
                 
@@ -114,17 +126,25 @@ class RAGPipeline:
             )
             
             final_answer = response_obj.answer
-            used_sources = response_obj.sources
+            used_sources = []
+            if "not found" not in final_answer.lower():
+                for doc in docs:
+                    label = _citation_label(doc.metadata)
+                    if label not in used_sources:
+                        used_sources.append(label)
             
-            # Format answer nicely for the UI with sources appended
-            if used_sources and "not found" not in final_answer.lower():
+            # Cite the chunks that were retrieved, not links invented by the model.
+            if used_sources:
                 final_answer += "\n\n"
-                for s in set(used_sources):
-                    final_answer += f"* <span style='color: gray'>Source:</span> [{s}]({s})\n"
+                for s in used_sources:
+                    if s.startswith("http://") or s.startswith("https://"):
+                        final_answer += f"* <span style='color: gray'>Source:</span> [{s}]({s})\n"
+                    else:
+                        final_answer += f"* <span style='color: gray'>Source:</span> {s}\n"
             
             return {
                 "answer": final_answer,
-                "sources": list(set(used_sources))
+                "sources": used_sources
             }
         except asyncio.TimeoutError:
             logger.error("LLM invocation timed out.")

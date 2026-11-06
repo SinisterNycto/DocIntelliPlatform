@@ -35,6 +35,19 @@ class VectorStoreManager:
         else:
             logger.error("Failed to add texts: Pinecone store could not be initialized.")
 
+    def delete_by_source(self, project_id: str, source: str):
+        """Remove chunks for one uploaded file or URL. Existing vectors are stored under source."""
+        if not settings.PINECONE_API_KEY or not source:
+            logger.error("Cannot delete vectors without a Pinecone key and a source.")
+            return
+        try:
+            from pinecone import Pinecone
+            index = Pinecone(api_key=settings.PINECONE_API_KEY).Index(self.index_name)
+            index.delete(filter={"source": {"$eq": source}}, namespace=project_id)
+            logger.info(f"Deleted vectors for source {source} in namespace {project_id}")
+        except Exception as e:
+            logger.error(f"Error deleting vectors for {source} in {project_id}: {e}")
+
     def delete_namespace(self, project_id: str):
         store = self.get_store(project_id)
         if store:

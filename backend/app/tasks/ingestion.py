@@ -54,15 +54,24 @@ def process_pdf_task(doc_id: str, project_id: str, file_path: str, filename: str
     try:
         update_doc_status(doc_id, "processing")
         
-        text = ""
+        pages = []
+        extracted = 0
         with fitz.open(file_path) as pdf:
-            for page in pdf:
-                text += page.get_text() + "\n\n"
-        
-        if len(text.strip()) < 50:
+            for page_number, page in enumerate(pdf, start=1):
+                page_text = page.get_text() or ""
+                if not page_text.strip():
+                    continue
+                extracted += len(page_text.strip())
+                pages.append((page_number, page_text))
+
+        if extracted < 50:
             raise ValueError("Could not extract meaningful text from PDF.")
 
-        num_chunks = rag_pipeline.process_document(project_id, text, source=filename)
+        num_chunks = 0
+        for page_number, page_text in pages:
+            num_chunks += rag_pipeline.process_document(
+                project_id, page_text, source=filename, page=page_number
+            )
         
         logger.info(f"Successfully processed PDF {filename} into {num_chunks} chunks.")
         update_doc_status(doc_id, "completed")

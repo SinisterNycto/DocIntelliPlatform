@@ -78,7 +78,11 @@ async def delete_document(document_id: str, user_id: str = Depends(get_current_u
         raise HTTPException(status_code=404, detail="Document not found")
         
     await verify_project_ownership(doc["project_id"], user_id)
-        
+
+    source = doc.get("url") or doc.get("filename")
+    from app.vectorstore.pinecone_store import vector_store_manager
+    vector_store_manager.delete_by_source(doc["project_id"], source)
+
     result = await db.documents.delete_one({"_id": ObjectId(document_id)})
     
     return {"message": "Document deleted successfully"}
